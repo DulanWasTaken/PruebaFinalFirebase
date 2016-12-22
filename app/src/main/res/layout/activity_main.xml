@@ -23,8 +23,8 @@
         android:text="Share"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/sign_in_button"
         android:layout_centerHorizontal="true"
         android:enabled="false"
-        android:id="@+id/share_button" />
+        android:id="@+id/share_button"
+        android:layout_alignTop="@+id/sign_in_button" />
 </RelativeLayout>

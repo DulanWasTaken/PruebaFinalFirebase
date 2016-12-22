@@ -4,9 +4,6 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
-import android.net.Uri;
-import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -48,6 +45,8 @@ import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+
+import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -260,15 +259,15 @@ public class MainActivity extends AppCompatActivity {
             builder.setItems(items, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int item) {
                     if (item == 0){
-                        Intent intent = new Intent(MainActivity.this,multiPickContactActivity.class);
+                        Intent intent = new Intent(MainActivity.this,MultiPickContactActivity.class);
                         intent.putExtra("rc",RC_PHONE_CONTACTS);
                         startActivityForResult(intent,RC_PHONE_CONTACTS);
                     }else if(item == 1){
-                        Intent intent = new Intent(MainActivity.this,multiPickContactActivity.class);
+                        Intent intent = new Intent(MainActivity.this,MultiPickContactActivity.class);
                         intent.putExtra("rc",RC_EMAIL_CONTACTS);
                         startActivityForResult(intent,RC_EMAIL_CONTACTS);
                     }else if(item == 2){
-                        /*Intent intent = new Intent(MainActivity.this,multiPickContactActivity.class);
+                        /*Intent intent = new Intent(MainActivity.this,MultiPickContactActivity.class);
                         intent.putExtra("rc",RC_KEY_CONTACTS);
                         startActivityForResult(intent,RC_KEY_CONTACTS);*/
                         Toast.makeText(MainActivity.this, "Not available yet", Toast.LENGTH_SHORT).show();
@@ -373,29 +372,31 @@ public class MainActivity extends AppCompatActivity {
             case RC_PHONE_CONTACTS:
             case RC_EMAIL_CONTACTS:
             case RC_KEY_CONTACTS:
-                final ArrayList<String> selectedContacts = data.getStringArrayListExtra("selectedContacts");
-                final EditText et = (EditText) new EditText(MainActivity.this);
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Group name")
-                        .setMessage("Enter a name for your group")
-                        .setView(et)
-                        .setCancelable(true)
-                        .setPositiveButton("Next", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                String name = et.getText().toString();
-                                if (!name.equals("")){
-                                    createGroup(name,selectedContacts);
+                if(resultCode==RESULT_OK) {
+                    final ArrayList<String> selectedContacts = data.getStringArrayListExtra("selectedContacts");
+                    final EditText et = (EditText) new EditText(MainActivity.this);
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Group name")
+                            .setMessage("Enter a name for your group")
+                            .setView(et)
+                            .setCancelable(true)
+                            .setPositiveButton("Next", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    String name = et.getText().toString();
+                                    if (!name.equals("")) {
+                                        createGroup(name, selectedContacts);
+                                    }
                                 }
-                            }
-                        })
-                        .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                dialog.cancel();
-                            }
-                        })
-                        .show();
+                            })
+                            .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.cancel();
+                                }
+                            })
+                            .show();
+                }
 
                 break;
         }

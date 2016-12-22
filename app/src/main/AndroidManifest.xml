@@ -24,10 +24,12 @@
             android:exported="false" />
 
         <activity
-            android:name=".multiPickContactActivity"
+            android:name=".multipickcontact.MultiPickContactActivity"
             android:label="@string/title_activity_multi_pick_contact"
             android:theme="@style/AppTheme.NoActionBar"
-            android:parentActivityName=".MainActivity"></activity>
+            android:parentActivityName=".MainActivity">
+
+        </activity>
     </application>
 
 </manifest>

@@ -1,16 +1,19 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.multipickcontact;
 
 import android.graphics.Color;
-import android.support.v7.widget.CardView;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+
+import es.udc.tfg.pruebafinalfirebase.R;
 
 /**
  * Created by Usuario on 19/12/2016.
@@ -19,6 +22,7 @@ import java.util.ArrayList;
 public class ContactsRecyclerViewAdapter extends RecyclerView.Adapter<ContactsRecyclerViewAdapter.ViewHolder> {
     private ArrayList<ContactItem> mDataset;
     private String TAG = "ContRecyclerViewAdapter";
+    private Drawable ic_contact;
 
     // Provide a reference to the views for each data item
     // Complex data items may need more than one view per item, and
@@ -28,14 +32,16 @@ public class ContactsRecyclerViewAdapter extends RecyclerView.Adapter<ContactsRe
         public TextView name;
         public TextView data;
         public ImageView checked;
-        public CardView cv;
+        public LinearLayout row;
+        public RoundedImageView photo;
 
         public ViewHolder(View v) {
             super(v);
             name = (TextView)v.findViewById(R.id.contact_name);
             data = (TextView)v.findViewById(R.id.contact_data);
             checked = (ImageView)v.findViewById(R.id.checked_img);
-            cv = (CardView)v.findViewById(R.id.cv);
+            row = (LinearLayout) v.findViewById(R.id.row);
+            photo = (RoundedImageView) v.findViewById(R.id.photo_img);
         }
     }
 
@@ -51,6 +57,7 @@ public class ContactsRecyclerViewAdapter extends RecyclerView.Adapter<ContactsRe
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.contacts_row, parent, false);
         // set the view's size, margins, paddings and layout parameters
+        ic_contact = parent.getResources().getDrawable(R.mipmap.ic_contact_photo);
 
         ViewHolder vh = new ViewHolder(v);
         return vh;
@@ -64,18 +71,18 @@ public class ContactsRecyclerViewAdapter extends RecyclerView.Adapter<ContactsRe
         ContactItem contact = mDataset.get(position);
         holder.name.setText(contact.getName());
         holder.data.setText(contact.getData());
-        holder.cv.setCardBackgroundColor(mDataset.get(position).isChecked()? Color.parseColor("#A9F5A9"):Color.WHITE);
-        holder.cv.setCardElevation(mDataset.get(position).isChecked()? 15:6);
+        if(contact.getImg_uri()!=null)
+            holder.photo.setImageURI(Uri.parse(contact.getImg_uri()));
+        else
+            holder.photo.setImageDrawable(ic_contact);
+        holder.row.setBackgroundColor(mDataset.get(position).isChecked()? Color.parseColor("#A9F5A9"):Color.WHITE);
         holder.checked.setVisibility(mDataset.get(position).isChecked()? View.VISIBLE:View.INVISIBLE);
         final ViewHolder finalHolder=holder;
-        Log.d(TAG,"position: "+position);
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(TAG,"position: "+position);
                 mDataset.get(position).setChecked(!mDataset.get(position).isChecked());
-                finalHolder.cv.setCardBackgroundColor(mDataset.get(position).isChecked()? Color.parseColor("#A9F5A9"):Color.WHITE);
-                finalHolder.cv.setCardElevation(mDataset.get(position).isChecked()? 15:6);
+                finalHolder.row.setBackgroundColor(mDataset.get(position).isChecked()? Color.parseColor("#A9F5A9"):Color.WHITE);
                 finalHolder.checked.setVisibility(mDataset.get(position).isChecked()? View.VISIBLE:View.INVISIBLE);
             }
         });

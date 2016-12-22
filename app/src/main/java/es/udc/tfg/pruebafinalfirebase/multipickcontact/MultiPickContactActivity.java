@@ -1,17 +1,13 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.multipickcontact;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.LoaderManager;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.ActionBar;
@@ -19,20 +15,24 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.SimpleItemAnimator;
 import android.support.v7.widget.Toolbar;
 import android.text.InputType;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 
 import java.util.ArrayList;
-import java.util.List;
 
-public class multiPickContactActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
+import es.udc.tfg.pruebafinalfirebase.MainActivity;
+import es.udc.tfg.pruebafinalfirebase.R;
+import es.udc.tfg.pruebafinalfirebase.Utils;
+
+public class MultiPickContactActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
     private int rc;
+    private String TAG = "MultiPickContactActiv";
     public final static int CONTACTS_LOADER_ID = 666;
 
     private FloatingActionButton fab;
@@ -49,7 +49,7 @@ public class multiPickContactActivity extends AppCompatActivity implements Loade
         mRecyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
 
-        rc = getIntent().getIntExtra("rc",MainActivity.RC_PHONE_CONTACTS);
+        rc = getIntent().getIntExtra("rc", MainActivity.RC_PHONE_CONTACTS);
         setSupportActionBar(toolbar);
         ab = getSupportActionBar();
         ab.setDisplayHomeAsUpEnabled(true);
@@ -59,9 +59,10 @@ public class multiPickContactActivity extends AppCompatActivity implements Loade
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                final EditText et = new EditText(multiPickContactActivity.this);
-                et.setInputType(InputType.TYPE_CLASS_NUMBER);
-                new AlertDialog.Builder(multiPickContactActivity.this)
+                final EditText et = new EditText(MultiPickContactActivity.this);
+                if(rc == MainActivity.RC_PHONE_CONTACTS)
+                    et.setInputType(InputType.TYPE_CLASS_NUMBER);
+                new AlertDialog.Builder(MultiPickContactActivity.this)
                         .setTitle(rc==MainActivity.RC_PHONE_CONTACTS? "Phone number":"Email")
                         .setMessage(rc==MainActivity.RC_PHONE_CONTACTS? "Enter a phone number":"Enter an email")
                         .setView(et)
@@ -72,7 +73,7 @@ public class multiPickContactActivity extends AppCompatActivity implements Loade
                                 String phoneNumber = et.getText().toString();
                                 if (!phoneNumber.equals("")){
                                     ContactsRecyclerViewAdapter adapter = (ContactsRecyclerViewAdapter) mRecyclerView.getAdapter();
-                                    adapter.addItemToDataset(new ContactItem("temp",phoneNumber),0);
+                                    adapter.addItemToDataset(new ContactItem("temp",phoneNumber,""),0);
                                     adapter.notifyDataSetChanged();
                                 }
                             }
@@ -90,6 +91,7 @@ public class multiPickContactActivity extends AppCompatActivity implements Loade
         mRecyclerView.setHasFixedSize(true);
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
+        mRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(this));
 
         getSupportLoaderManager().initLoader(CONTACTS_LOADER_ID, null,this);
     }
@@ -127,13 +129,15 @@ public class multiPickContactActivity extends AppCompatActivity implements Loade
         String[] projection = null;
         if (rc==MainActivity.RC_PHONE_CONTACTS)
          projection = new String[]{                                  // The columns to return for each row
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                ContactsContract.CommonDataKinds.Phone.NUMBER
+                 ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                 ContactsContract.CommonDataKinds.Phone.NUMBER,
+                 ContactsContract.CommonDataKinds.Phone.PHOTO_URI
         } ;
         else if(rc == MainActivity.RC_EMAIL_CONTACTS)
             projection = new String[]{                                  // The columns to return for each row
-                    ContactsContract.CommonDataKinds.Email.DISPLAY_NAME,
-                    ContactsContract.CommonDataKinds.Email.ADDRESS
+                    ContactsContract.Contacts.DISPLAY_NAME,
+                    ContactsContract.CommonDataKinds.Email.ADDRESS,
+                    ContactsContract.CommonDataKinds.Email.PHOTO_URI
             } ;
 
         String selection = null;                                 //Selection criteria
@@ -156,9 +160,11 @@ public class multiPickContactActivity extends AppCompatActivity implements Loade
             cursor.moveToFirst();
 
             do {
-                String name = cursor.getString(cursor.getColumnIndex(rc==MainActivity.RC_PHONE_CONTACTS? ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME: ContactsContract.CommonDataKinds.Email.DISPLAY_NAME));
+                String name = cursor.getString(cursor.getColumnIndex(rc==MainActivity.RC_PHONE_CONTACTS? ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME: ContactsContract.Contacts.DISPLAY_NAME));
                 String data = cursor.getString(cursor.getColumnIndex(rc==MainActivity.RC_PHONE_CONTACTS? ContactsContract.CommonDataKinds.Phone.NUMBER: ContactsContract.CommonDataKinds.Email.ADDRESS));
-                contacts.add(new ContactItem(name,data));
+                String photo = cursor.getString(cursor.getColumnIndex(rc==MainActivity.RC_PHONE_CONTACTS? ContactsContract.CommonDataKinds.Phone.PHOTO_URI: ContactsContract.CommonDataKinds.Email.PHOTO_URI));
+                Log.d(TAG,"Name: "+name+"data: "+data+"photo: "+photo);
+                contacts.add(new ContactItem(name,data,photo));
             } while (cursor.moveToNext());
         }
 
