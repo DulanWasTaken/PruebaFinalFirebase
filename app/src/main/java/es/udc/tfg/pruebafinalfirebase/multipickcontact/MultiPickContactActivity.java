@@ -1,5 +1,7 @@
 package es.udc.tfg.pruebafinalfirebase.multipickcontact;
 
+import android.app.SearchManager;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
@@ -15,6 +17,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
 import android.text.InputType;
 import android.util.Log;
@@ -24,6 +27,8 @@ import android.view.View;
 import android.widget.EditText;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 import es.udc.tfg.pruebafinalfirebase.MainActivity;
 import es.udc.tfg.pruebafinalfirebase.R;
@@ -41,6 +46,8 @@ public class MultiPickContactActivity extends AppCompatActivity implements Loade
     private RecyclerView mRecyclerView;
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
+
+    private ArrayList<ContactItem> contacts;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,7 +80,9 @@ public class MultiPickContactActivity extends AppCompatActivity implements Loade
                                 String phoneNumber = et.getText().toString();
                                 if (!phoneNumber.equals("")){
                                     ContactsRecyclerViewAdapter adapter = (ContactsRecyclerViewAdapter) mRecyclerView.getAdapter();
-                                    adapter.addItemToDataset(new ContactItem("temp",phoneNumber,""),0);
+                                    ContactItem tempContact = new ContactItem("temp",phoneNumber,null);
+                                    tempContact.setChecked(true);
+                                    adapter.addItemToDataset(tempContact,0);
                                     adapter.notifyDataSetChanged();
                                 }
                             }
@@ -111,7 +120,7 @@ public class MultiPickContactActivity extends AppCompatActivity implements Loade
     public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
         //The framework will take care of closing the
         // old cursor once we return.
-        ArrayList<ContactItem> contacts = contactsFromCursor(cursor);
+        contacts = contactsFromCursor(cursor);
         mRecyclerView.setAdapter(new ContactsRecyclerViewAdapter(contacts));
         fab.setVisibility(View.VISIBLE);
     }
@@ -164,7 +173,9 @@ public class MultiPickContactActivity extends AppCompatActivity implements Loade
                 String data = cursor.getString(cursor.getColumnIndex(rc==MainActivity.RC_PHONE_CONTACTS? ContactsContract.CommonDataKinds.Phone.NUMBER: ContactsContract.CommonDataKinds.Email.ADDRESS));
                 String photo = cursor.getString(cursor.getColumnIndex(rc==MainActivity.RC_PHONE_CONTACTS? ContactsContract.CommonDataKinds.Phone.PHOTO_URI: ContactsContract.CommonDataKinds.Email.PHOTO_URI));
                 Log.d(TAG,"Name: "+name+"data: "+data+"photo: "+photo);
-                contacts.add(new ContactItem(name,data,photo));
+                ContactItem contact = new ContactItem(name,data,photo);
+                if(!contacts.contains(contact))
+                    contacts.add(contact);
             } while (cursor.moveToNext());
         }
 
@@ -176,17 +187,42 @@ public class MultiPickContactActivity extends AppCompatActivity implements Loade
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.multi_pick_contact_menu,menu);
-        return super.onCreateOptionsMenu(menu);
+        // Associate searchable configuration with the SearchView
+        SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+        SearchView searchView = (SearchView) menu.findItem(R.id.search).getActionView();
+        searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                final ArrayList<ContactItem> filteredContacts = new ArrayList<ContactItem>();
+                for(ContactItem contact : contacts){
+                    if(contact.getName().toLowerCase().contains(newText))
+                        filteredContacts.add(contact);
+                }
+                mRecyclerView.setAdapter(new ContactsRecyclerViewAdapter(filteredContacts));
+                mRecyclerView.scrollToPosition(0);
+                return true;
+            }
+        });
+        return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_save:
-                ContactsRecyclerViewAdapter adapter = (ContactsRecyclerViewAdapter) mRecyclerView.getAdapter();
+                ///ContactsRecyclerViewAdapter adapter = (ContactsRecyclerViewAdapter) mRecyclerView.getAdapter();
                 ArrayList<String> selectedContacts = new ArrayList<>();
-                for(ContactItem contact : adapter.getmDataset()){
-                    selectedContacts.add(rc==MainActivity.RC_EMAIL_CONTACTS? Utils.generateValidEmail(contact.getData()):contact.getData());
+                for(ContactItem contact : contacts){
+                    if(contact.isChecked()) {
+                        Log.d(TAG, "SELECTED: " + contact.getName());
+                        selectedContacts.add(rc == MainActivity.RC_EMAIL_CONTACTS ? Utils.generateValidEmail(contact.getData()) : Utils.generateValidPhoneNumber(contact.getData()));
+                    }
                 }
                 Intent data = new Intent();
                 data.putExtra("selectedContacts", selectedContacts);

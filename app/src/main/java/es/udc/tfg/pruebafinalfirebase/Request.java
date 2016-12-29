@@ -47,4 +47,12 @@ public class Request {
     public long getTime() {
         return time;
     }
+
+    public int getType() {
+        return type;
+    }
+
+    public void setType(int type) {
+        this.type = type;
+    }
 }

@@ -1,23 +1,34 @@
 package es.udc.tfg.pruebafinalfirebase;
 
 import android.app.Dialog;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.appinvite.AppInvite;
@@ -36,10 +47,12 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
@@ -48,9 +61,10 @@ import java.util.ArrayList;
 
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements Notifications_fragment.OnNotifFragmentInteractionListener {
 
     private String TAG = "MainActiv";
+    public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
     public static final int RC_SIGN_IN = 777;
     public static final int RC_PHONE_CONTACTS = 888;
     public static final int RC_EMAIL_CONTACTS = 999;
@@ -58,8 +72,19 @@ public class MainActivity extends AppCompatActivity {
     public static final int PERMISSION_REQUEST_READ_CONTACTS = 333;
     public boolean initListeners = true;
 
-    private Button signInButton,shareButton;
+    public ArrayList<String> myGroups = new ArrayList<>();
+
+    private RelativeLayout main_content;
+    private MenuItem menuItemLog,menuItemShare,menuItemNotif;
+    private Menu menu;
     private Dialog pb;
+    private ActionBar ab;
+
+    FragmentManager fragmentManager;
+
+    private FirebaseBackgroundListeners mService;
+    private ServiceConnection mConnection;
+    private boolean mBound;
 
     private GoogleApiClient mGoogleApiClient;
     private GoogleSignInOptions gso;
@@ -73,6 +98,10 @@ public class MainActivity extends AppCompatActivity {
     public DatabaseReference myRequestsRef;
     public DatabaseReference publicIdsRef;
     public DatabaseReference groupsRef;
+    private ValueEventListener nameGroupListener;
+    private ValueEventListener stateGroupListener;
+    private ChildEventListener membersGroupListener;
+    private ValueEventListener locationValueListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
         pb.requestWindowFeature(Window.FEATURE_NO_TITLE);
         pb.getWindow().setBackgroundDrawableResource(R.color.transparent);
         pb.setContentView(view);
+        pb.setCancelable(false);
         pb.show();
         /************************ INICILIZAR GOOGLE API ********************************/
         gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -105,26 +135,19 @@ public class MainActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         publicIdsRef = database.getReference().child("publicIds");
         groupsRef = database.getReference().child("groups");
+        /************************** INICIALIZAR OTRAS VARIABLES ***************************/
+        fragmentManager = getSupportFragmentManager();
         /**************************** INICILIZAR LAS VIEWS ********************************/
         setContentView(R.layout.activity_main);
-        signInButton = (Button) findViewById(R.id.sign_in_button);
-        shareButton = (Button) findViewById(R.id.share_button);
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        ab = getSupportActionBar();
+
+        main_content = (RelativeLayout) findViewById(R.id.main_content);
         /*********************** INICILIZAR LOS ONCLICKLISTENERS **************************/
-        signInButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(signInButton.getText().toString().equals("Sign in"))
-                    login();
-                else if(signInButton.getText().toString().equals("Sign out"))
-                    logout();
-            }
-        });
-        shareButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                checkPermissions();
-            }
-        });
+
+
         /***********************  COMPROBAR ESTADO DE AUTENTICACIÓN **************************/
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -132,11 +155,11 @@ public class MainActivity extends AppCompatActivity {
                 mAuth = firebaseAuth;
                 mUser = mAuth.getCurrentUser();
                 if(mUser!=null){
-                    enableButtons();
-                    signInButton.setText("Sign out");
+                    if(menuItemLog !=null)
+                        menuItemLog.setTitle("Sign out");
                     myProfileRef = database.getReference().child("users").child(mUser.getUid());
                     //CHECK IF THE PROFILE ALREADY EXISTS IN DB
-                    myProfileRef.addValueEventListener(new ValueEventListener() {
+                    final ValueEventListener profileListener = new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             if(!dataSnapshot.exists()){
@@ -168,9 +191,8 @@ public class MainActivity extends AppCompatActivity {
                                         .show();
                             }else{
                                 mProfile=dataSnapshot.getValue(User.class);
-                                if(initListeners){
-                                    initListeners();
-                                }
+                                initListeners();
+                                myProfileRef.removeEventListener(this);
                             }
                         }
 
@@ -178,11 +200,12 @@ public class MainActivity extends AppCompatActivity {
                         public void onCancelled(DatabaseError databaseError) {
                             Log.d(TAG,"Ref: "+myProfileRef.toString()+"  database error: "+databaseError);
                         }
-                    });
+                    };
+                    myProfileRef.addValueEventListener(profileListener);
                 } else{
-                    initListeners = true;
                     disableButtons();
-                    signInButton.setText("Sign in");
+                    if(menuItemLog !=null)
+                        menuItemLog.setTitle("Sign in");
                 }
 
             }
@@ -190,16 +213,36 @@ public class MainActivity extends AppCompatActivity {
         mAuth.addAuthStateListener(mAuthListener);
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mBound) {
+            unbindService(mConnection);
+            mBound = false;
+        }
+    }
+
     private void enableButtons(){
         pb.cancel();
-        signInButton.setEnabled(true);
-        shareButton.setEnabled(true);
+        if (menu != null){
+            menuItemLog.setEnabled(true);
+            menuItemShare.setEnabled(true);
+            menuItemNotif.setEnabled(true);
+            menuItemShare.setVisible(true);
+            menuItemNotif.setVisible(true);
+        }
     }
 
     private void disableButtons(){
         pb.cancel();
-        signInButton.setEnabled(true);
-        shareButton.setEnabled(false);
+        if (menu != null) {
+            menuItemLog.setEnabled(true);
+            menuItemNotif.setVisible(false);
+            menuItemShare.setVisible(false);
+            menuItemShare.setEnabled(false);
+            menuItemNotif.setEnabled(false);
+        }
+
     }
 
     private void logout(){
@@ -223,8 +266,6 @@ public class MainActivity extends AppCompatActivity {
         myProfileRef.setValue(mProfile);
 
         String requestsId = mProfile.getEmail()+mProfile.getPhoneNumber()+mProfile.getKey();
-        myRequestsRef = database.getReference().child("requests").child(requestsId);
-        myRequestsRef.setValue(null);
         database.getReference().child("publicIds").child(mProfile.getEmail()).setValue(requestsId);
         database.getReference().child("publicIds").child(mProfile.getPhoneNumber()).setValue(requestsId);
         if(!mProfile.getKey().equals(""))
@@ -233,9 +274,154 @@ public class MainActivity extends AppCompatActivity {
 
     private void initListeners(){
         Log.d(TAG,"init listeners");
-        initListeners = false;
-        //BIND SERVICE, GROUPS LISTENERS, REQUEST LISTENERS
+        startService(new Intent(MainActivity.this,FirebaseBackgroundListeners.class));
 
+        mConnection = new ServiceConnection() {
+
+            @Override
+            public void onServiceConnected(ComponentName className, IBinder service) {
+                // We've bound to LocalService, cast the IBinder and get LocalService instance
+                FirebaseBackgroundListeners.LocalBinder binder = (FirebaseBackgroundListeners.LocalBinder) service;
+                mService = binder.getService();
+                mBound = true;
+                enableButtons();
+                pb.cancel();
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName arg0) {
+                mBound = false;
+            }
+        };
+
+        Intent intent = new Intent(this, FirebaseBackgroundListeners.class);
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+
+        myRequestsRef = database.getReference().child("requests").child(mProfile.getEmail()+mProfile.getPhoneNumber());
+
+        myProfileRef.child("groupsId").addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                pb.show();
+                Log.d(TAG,"GROUP ADDED");
+                initGroupListeners(dataSnapshot.getValue(String.class));
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                String groupId = dataSnapshot.getValue(String.class);
+                groupsRef.child(groupId).child("name").removeEventListener(nameGroupListener);
+                groupsRef.child(groupId).child("state").removeEventListener(stateGroupListener);
+                groupsRef.child(groupId).child("membersId").removeEventListener(membersGroupListener);
+                groupsRef.child(groupId).child("membersId").runTransaction(new Transaction.Handler() {
+                    @Override
+                    public Transaction.Result doTransaction(MutableData mutableData) {
+                        ArrayList<GroupMember> members = mutableData.getValue(ArrayList.class);
+                        for(GroupMember member : members){
+                            if(member.getMemberId().equals(mUser.getUid()))
+                                members.remove(member);
+                        }
+                        mutableData.setValue(members);
+                        return Transaction.success(mutableData);
+                    }
+
+                    @Override
+                    public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
+                        Log.d(TAG,"Transaction removing my id completed");
+                    }
+                });
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void initGroupListeners(final String groupId){
+        nameGroupListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                groupNameChanged(dataSnapshot.getValue(String.class),groupId);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        };
+        stateGroupListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                stateGroupChanged(dataSnapshot.getValue(int.class),groupId);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        };
+        membersGroupListener = new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                final GroupMember member = dataSnapshot.getValue(GroupMember.class);
+                locationValueListener = new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        locationChanged(dataSnapshot.getValue(Location.class),member.getMemberId(),groupId);
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                };
+                if(member.getState()==Group.GROUP_STATE_ACTIVE)
+                    myProfileRef.getParent().child(member.getMemberId()).child("location").addValueEventListener(locationValueListener);
+
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+                final GroupMember member = dataSnapshot.getValue(GroupMember.class);
+                if(member.getState()==Group.GROUP_STATE_ACTIVE)
+                    myProfileRef.getParent().child(member.getMemberId()).child("location").addValueEventListener(locationValueListener);
+                else if(member.getState()==Group.GROUP_STATE_STOPPED){
+                    myProfileRef.getParent().child(member.getMemberId()).child("location").removeEventListener(locationValueListener);
+                }
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                final GroupMember member = dataSnapshot.getValue(GroupMember.class);
+                myProfileRef.getParent().child(member.getMemberId()).child("location").removeEventListener(locationValueListener);
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        };
+
+        groupsRef.child(groupId).child("name").addValueEventListener(nameGroupListener);
+        groupsRef.child(groupId).child("state").addValueEventListener(stateGroupListener);
+        groupsRef.child(groupId).child("membersId").addChildEventListener(membersGroupListener);
         pb.cancel();
     }
 
@@ -280,52 +466,55 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /***************************** HANDLE BD CHANGES METHODS *****************************/
+
     private void createGroup(String name, ArrayList<String> selectedContacts){
 
-        final ArrayList<String> foreignRequests = new ArrayList<>();
-        for (String contact : selectedContacts){
-            publicIdsRef.child(contact).addListenerForSingleValueEvent(new ValueEventListener() {
+        ArrayList<GroupMember> members = new ArrayList<>();
+        members.add(new GroupMember(Group.GROUP_STATE_ACTIVE,mUser.getUid(),mProfile.getNick()));
+        final String groupId = mUser.getUid()+System.currentTimeMillis();
+        groupsRef.child(groupId).setValue(new Group(name,members));
+        myProfileRef.child("groupsId").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                GenericTypeIndicator<ArrayList<String>> t = new GenericTypeIndicator<ArrayList<String>>() {};
+                ArrayList<String> groups = dataSnapshot.getValue(t);
+                if (groups == null)
+                    groups = new ArrayList<String>();
+                Log.d(TAG,"datasnapshot: "+dataSnapshot+" groups: "+groups);
+                groups.add(groupId);
+                myProfileRef.child("groupsId").setValue(groups);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+        for (String contact: selectedContacts){
+            ValueEventListener listener;
+            Log.d(TAG, ""+contact);
+            listener = new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    foreignRequests.add(dataSnapshot.getValue(String.class));
+                    myRequestsRef.getParent().child(dataSnapshot.getValue(String.class)).child(mProfile.getNick()).setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP));
                 }
-
                 @Override
                 public void onCancelled(DatabaseError databaseError) {
                     Log.d(TAG,"Cancelled: publicIds "+databaseError);
                 }
-            });
-        }
-        ArrayList<String> members = new ArrayList<>();
-        members.add(mUser.getUid());
-        final String groupId = mUser.getUid()+System.currentTimeMillis();
-        groupsRef.child(groupId).setValue(new Group(name,members));
-        myProfileRef.runTransaction(new Transaction.Handler() {
-            @Override
-            public Transaction.Result doTransaction(MutableData mutableData) {
-                User p = mutableData.getValue(User.class);
-                if (p == null) {
-                    return Transaction.success(mutableData);
-                }
-
-                p.addGroup(groupId);
-                mutableData.setValue(p);
-                return Transaction.success(mutableData);
-            }
-
-            @Override
-            public void onComplete(DatabaseError databaseError, boolean b,
-                                   DataSnapshot dataSnapshot) {
-                // Transaction completed
-                Log.d(TAG, "postTransaction:onComplete:" + databaseError);
-            }
-        });
-
-        for (String requestId : foreignRequests){
-            myRequestsRef.getParent().child(requestId).child(mProfile.getNick()).setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP));
+            };
+            publicIdsRef.child(contact).addListenerForSingleValueEvent(listener);
         }
 
     }
+
+    private void groupNameChanged(String name, String groupId){}
+
+    private void stateGroupChanged(int state,String groupId){}
+
+    private void locationChanged(Location location, String userId, String groupId){}
 
 
     /********************************************************************************************/
@@ -374,6 +563,7 @@ public class MainActivity extends AppCompatActivity {
             case RC_KEY_CONTACTS:
                 if(resultCode==RESULT_OK) {
                     final ArrayList<String> selectedContacts = data.getStringArrayListExtra("selectedContacts");
+                    Log.d(TAG,"SELECTED CONTACTS ARE: "+selectedContacts.toString());
                     final EditText et = (EditText) new EditText(MainActivity.this);
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("Group name")
@@ -420,4 +610,69 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        this.menu = menu;
+        getMenuInflater().inflate(R.menu.main_menu,menu);
+        menuItemLog = menu.findItem(R.id.action_log);
+        menuItemShare = menu.findItem(R.id.action_share);
+        menuItemNotif = menu.findItem(R.id.action_notifications);
+        if(mUser!=null)
+            menuItemLog.setTitle("Sign out");
+        else {
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
+            menuItemShare.setEnabled(false);
+            menuItemNotif.setEnabled(false);
+        }
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_log:
+                pb.show();
+                if(menuItemLog.getTitle().toString().equals("Sign in"))
+                    login();
+                else if(menuItemLog.getTitle().toString().equals("Sign out"))
+                    logout();
+                return true;
+            case R.id.action_share:
+                checkPermissions();
+                return true;
+            case R.id.action_notifications:
+                FragmentTransaction transaction = fragmentManager.beginTransaction();
+                Notifications_fragment existFragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
+                if (existFragment != null){
+                    menuItemNotif.setIcon(R.mipmap.ic_notif);
+                    Log.d(TAG,"FRAGMENT EXISTS");
+                    transaction.remove(existFragment);
+                    transaction.commit();
+                    fragmentManager.popBackStack();
+                }else{
+                    menuItemNotif.setIcon(R.mipmap.ic_notif_pressed);
+                    Notifications_fragment fragment = new Notifications_fragment();
+                    transaction.replace(R.id.fragment_content,fragment,NOTIF_FRAGMENT_TAG);
+                    transaction.addToBackStack(NOTIF_FRAGMENT_TAG);
+                    transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
+                    transaction.commit();
+                }
+
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+
+        }
+    }
+
+    /****************************** INTERACTIONS WITH FRAGMENTS **************************/
+
+    @Override
+    public ArrayList<Request> getRequests() {
+        Log.d(TAG,"getRequests... bound = "+mBound);
+        if (mBound)
+            return mService.getPendingRequests();
+        return new ArrayList<>();
+    }
 }

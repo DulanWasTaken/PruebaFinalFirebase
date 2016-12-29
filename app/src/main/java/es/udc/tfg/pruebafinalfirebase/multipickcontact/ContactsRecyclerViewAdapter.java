@@ -102,4 +102,5 @@ public class ContactsRecyclerViewAdapter extends RecyclerView.Adapter<ContactsRe
     public void addItemToDataset(ContactItem item, int position){
         mDataset.add(position,item);
     }
+
 }

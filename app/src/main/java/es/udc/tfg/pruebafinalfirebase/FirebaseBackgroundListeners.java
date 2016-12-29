@@ -3,6 +3,7 @@ package es.udc.tfg.pruebafinalfirebase;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.v4.app.FragmentActivity;
@@ -22,10 +23,18 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.util.ArrayList;
+
 public class FirebaseBackgroundListeners extends Service {
-    String TAG = "MYSERVICE";
-    boolean running = false;
-    DatabaseReference ref;
+
+    private String TAG = "MYSERVICE";
+    private boolean running = false;
+    private boolean bound = false;
+    private ArrayList<Request> pendingRequests;
+
+    private final IBinder mBinder = (IBinder) new LocalBinder();
+
+    private DatabaseReference ref;
     ChildEventListener listener;
     FirebaseAuth.AuthStateListener mAuthListener;
     FirebaseAuth mAuth;
@@ -33,17 +42,35 @@ public class FirebaseBackgroundListeners extends Service {
     public FirebaseBackgroundListeners() {
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
-        throw new UnsupportedOperationException("Not yet implemented");
+    public class LocalBinder extends Binder {
+        FirebaseBackgroundListeners getService() {
+            // Return this instance of LocalService so clients can call public methods
+            return FirebaseBackgroundListeners.this;
+        }
     }
 
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(TAG,"onStartCommand");
+    public IBinder onBind(Intent intent) {
+        Log.d(TAG,"onBind");
+        bound=true;
+        return mBinder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        Log.d(TAG,"onUnBind");
+        bound = false;
+        return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        Log.d(TAG,"onCreate");
         running = true;
+        pendingRequests = new ArrayList<>();
         mAuth = FirebaseAuth.getInstance();
 
         mAuthListener = new FirebaseAuth.AuthStateListener() {
@@ -51,10 +78,13 @@ public class FirebaseBackgroundListeners extends Service {
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 mAuth = firebaseAuth;
                 if (firebaseAuth.getCurrentUser()!= null){
+                    Log.d(TAG,"ENTRO AQUÍ");
                     listener = new ChildEventListener() {
                         @Override
                         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                            Log.d(TAG, dataSnapshot.getValue(Request.class).toString());
+                            Request request = dataSnapshot.getValue(Request.class);
+                            Log.d(TAG,"adding request "+dataSnapshot);
+                            pendingRequests.add(request);
                             NotificationCompat.Builder mBuilder =
                                     new NotificationCompat.Builder(getApplicationContext())
                                             .setSmallIcon(android.R.drawable.ic_menu_share)
@@ -89,6 +119,7 @@ public class FirebaseBackgroundListeners extends Service {
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             User user = dataSnapshot.getValue(User.class);
                             ref = FirebaseDatabase.getInstance().getReference().child("requests").child(user.getEmail()+user.getPhoneNumber()+user.getKey());
+                            Log.d(TAG,"ref to listen: "+ref.toString()+" LISTENER: "+listener.toString());
                             ref.addChildEventListener(listener);
                         }
 
@@ -100,18 +131,30 @@ public class FirebaseBackgroundListeners extends Service {
                 }
             }
         };
-        mAuth.addAuthStateListener(mAuthListener);
 
+        mAuth.addAuthStateListener(mAuthListener);
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG,"onStartCommand... pendingRequests: "+pendingRequests);
         return START_STICKY;
     }
 
 
-    @Override
+/*    @Override
     public void onDestroy() {
         Log.d(TAG,"onDestroy");
         running = false;
-        ref.removeEventListener(listener);
-        mAuth.removeAuthStateListener(mAuthListener);
+        if(ref!=null)
+            ref.removeEventListener(listener);
+        if(mAuth!=null)
+            mAuth.removeAuthStateListener(mAuthListener);
         super.onDestroy();
+    }*/
+
+    public ArrayList<Request> getPendingRequests(){
+        Log.d(TAG,"getRequests: "+pendingRequests);
+        return pendingRequests;
     }
 }

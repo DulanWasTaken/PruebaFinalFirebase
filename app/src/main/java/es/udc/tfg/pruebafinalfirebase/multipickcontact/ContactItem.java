@@ -49,4 +49,10 @@ class ContactItem {
     protected void setImg_uri(String img_uri) {
         this.img_uri = img_uri;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        ContactItem c = (ContactItem) o;
+        return this.name.equals(c.getName());
+    }
 }

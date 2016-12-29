@@ -11,14 +11,14 @@ public class Group {
     public final static int GROUP_STATE_STOPPED = 0;
 
     private String name;
-    private ArrayList<String> membersId;
+    private ArrayList<GroupMember> membersId;
     private long time;
     private int state;
 
     public Group() {
     }
 
-    public Group(String name, ArrayList<String> membersId) {
+    public Group(String name, ArrayList<GroupMember> membersId) {
         this.name = name;
         this.membersId = membersId;
         this.time = System.currentTimeMillis();
@@ -33,11 +33,11 @@ public class Group {
         this.name = name;
     }
 
-    public ArrayList<String> getMembersId() {
+    public ArrayList<GroupMember> getMembersId() {
         return membersId;
     }
 
-    public void setMembersId(ArrayList<String> membersId) {
+    public void setMembersId(ArrayList<GroupMember> membersId) {
         this.membersId = membersId;
     }
 

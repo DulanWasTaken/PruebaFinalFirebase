@@ -26,9 +26,9 @@
         <activity
             android:name=".multipickcontact.MultiPickContactActivity"
             android:label="@string/title_activity_multi_pick_contact"
-            android:theme="@style/AppTheme.NoActionBar"
             android:parentActivityName=".MainActivity">
-
+            <meta-data android:name="android.app.searchable"
+                android:resource="@xml/searchable" />
         </activity>
     </application>
 
