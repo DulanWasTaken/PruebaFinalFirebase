@@ -7,7 +7,7 @@ import java.util.ArrayList;
  */
 
 public class NotificationItem {
-    private String groupName;
+    private String groupName,requestId;
     private ArrayList<String> members;
     private long time;
 
@@ -15,10 +15,11 @@ public class NotificationItem {
 
     }
 
-    public NotificationItem(String groupName, ArrayList<String> members, long time){
+    public NotificationItem(String groupName, ArrayList<String> members, long time,String requestId){
         this.groupName=groupName;
         this.members=members;
         this.time=time;
+        this.requestId=requestId;
     }
 
     public String getGroupName() {
@@ -31,5 +32,9 @@ public class NotificationItem {
 
     public long getTime() {
         return time;
+    }
+
+    public String getRequestId() {
+        return requestId;
     }
 }

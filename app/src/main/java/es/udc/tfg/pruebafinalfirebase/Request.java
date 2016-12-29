@@ -12,7 +12,7 @@ public class Request {
     public final static int REQUEST_TYPE_GROUP = 11;
     public final static int REQUEST_TYPE_START_SHARING = 22;
 
-    private String idGroup;
+    private String idGroup,id;
     private long time;
     private int state;
     private int type;
@@ -21,11 +21,12 @@ public class Request {
 
     }
 
-    public Request(String idGroup, int type) {
+    public Request(String idGroup, int type, String id) {
         this.idGroup = idGroup;
         this.state = REQUEST_WAITING;
         this.time = System.currentTimeMillis();
         this.type = type;
+        this.id = id;
     }
 
     public String getIdGroup() {
@@ -50,6 +51,10 @@ public class Request {
 
     public int getType() {
         return type;
+    }
+
+    public String getId() {
+        return id;
     }
 
     public void setType(int type) {

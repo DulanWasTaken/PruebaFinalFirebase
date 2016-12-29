@@ -23,6 +23,7 @@ public class ContactsRecyclerViewAdapter extends RecyclerView.Adapter<ContactsRe
     private ArrayList<ContactItem> mDataset;
     private String TAG = "ContRecyclerViewAdapter";
     private Drawable ic_contact;
+    private int color_green;
 
     // Provide a reference to the views for each data item
     // Complex data items may need more than one view per item, and
@@ -58,6 +59,7 @@ public class ContactsRecyclerViewAdapter extends RecyclerView.Adapter<ContactsRe
                 .inflate(R.layout.contacts_row, parent, false);
         // set the view's size, margins, paddings and layout parameters
         ic_contact = parent.getResources().getDrawable(R.mipmap.ic_contact_photo);
+        color_green = parent.getResources().getColor(R.color.validate_green);
 
         ViewHolder vh = new ViewHolder(v);
         return vh;
@@ -75,14 +77,14 @@ public class ContactsRecyclerViewAdapter extends RecyclerView.Adapter<ContactsRe
             holder.photo.setImageURI(Uri.parse(contact.getImg_uri()));
         else
             holder.photo.setImageDrawable(ic_contact);
-        holder.row.setBackgroundColor(mDataset.get(position).isChecked()? Color.parseColor("#A9F5A9"):Color.WHITE);
+        holder.row.setBackgroundColor(mDataset.get(position).isChecked()? color_green:Color.WHITE);
         holder.checked.setVisibility(mDataset.get(position).isChecked()? View.VISIBLE:View.INVISIBLE);
         final ViewHolder finalHolder=holder;
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mDataset.get(position).setChecked(!mDataset.get(position).isChecked());
-                finalHolder.row.setBackgroundColor(mDataset.get(position).isChecked()? Color.parseColor("#A9F5A9"):Color.WHITE);
+                finalHolder.row.setBackgroundColor(mDataset.get(position).isChecked()? color_green:Color.WHITE);
                 finalHolder.checked.setVisibility(mDataset.get(position).isChecked()? View.VISIBLE:View.INVISIBLE);
             }
         });

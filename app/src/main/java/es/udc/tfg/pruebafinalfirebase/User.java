@@ -105,6 +105,8 @@ public class User {
     }
 
     public void addGroup(String groupId){
+        if (groupsId==null)
+            groupsId = new ArrayList<String>();
         groupsId.add(groupId);
     }
 

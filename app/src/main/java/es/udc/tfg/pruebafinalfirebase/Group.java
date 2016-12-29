@@ -52,4 +52,10 @@ public class Group {
     public long getTime() {
         return time;
     }
+
+    public void addMember(GroupMember member){
+        if(membersId == null)
+            membersId = new ArrayList<>();
+        membersId.add(member);
+    }
 }

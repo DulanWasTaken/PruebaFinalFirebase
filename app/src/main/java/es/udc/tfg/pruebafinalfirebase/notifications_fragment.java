@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.SimpleDividerItemDecoration;
 
 
-public class Notifications_fragment extends Fragment {
+public class Notifications_fragment extends Fragment{
 
     private String TAG = "NOTIF_FRAGMENT";
     private Context context;
@@ -87,7 +87,7 @@ public class Notifications_fragment extends Fragment {
                         for (GroupMember member: group.getMembersId()){
                             members.add(member.getNick());
                         }
-                        notifs.add(new NotificationItem(group.getName(),members,request.getTime()));
+                        notifs.add(new NotificationItem(group.getName(),members,request.getTime(),request.getId()));
                         mRecyclerView.setAdapter(new NotifRecyclerViewAdapter(notifs));
                     }
 
@@ -105,7 +105,7 @@ public class Notifications_fragment extends Fragment {
                         for (GroupMember member: group.getMembersId()){
                             members.add(member.getNick());
                         }
-                        notifs.add(new NotificationItem(group.getName(),members,request.getTime()));
+                        notifs.add(new NotificationItem(group.getName(),members,request.getTime(),request.getId()));
                     }
 
                     @Override
@@ -123,7 +123,6 @@ public class Notifications_fragment extends Fragment {
         super.onDetach();
         mListener = null;
     }
-
 
     public interface OnNotifFragmentInteractionListener {
         // TODO: Update argument type and name

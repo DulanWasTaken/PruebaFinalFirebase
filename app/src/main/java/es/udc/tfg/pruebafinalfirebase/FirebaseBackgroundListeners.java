@@ -101,7 +101,8 @@ public class FirebaseBackgroundListeners extends Service {
 
                         @Override
                         public void onChildRemoved(DataSnapshot dataSnapshot) {
-
+                            Request request = dataSnapshot.getValue(Request.class);
+                            pendingRequests.remove(request);
                         }
 
                         @Override

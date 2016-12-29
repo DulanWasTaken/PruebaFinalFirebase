@@ -57,11 +57,12 @@ import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 
-public class MainActivity extends AppCompatActivity implements Notifications_fragment.OnNotifFragmentInteractionListener {
+public class MainActivity extends AppCompatActivity implements Notifications_fragment.OnNotifFragmentInteractionListener,NotifRecyclerViewAdapter.OnNotifAdapterInteractionListener {
 
     private String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -303,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                 pb.show();
-                Log.d(TAG,"GROUP ADDED");
+                String groupId = dataSnapshot.getValue(String.class);
                 initGroupListeners(dataSnapshot.getValue(String.class));
             }
 
@@ -318,23 +319,6 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
                 groupsRef.child(groupId).child("name").removeEventListener(nameGroupListener);
                 groupsRef.child(groupId).child("state").removeEventListener(stateGroupListener);
                 groupsRef.child(groupId).child("membersId").removeEventListener(membersGroupListener);
-                groupsRef.child(groupId).child("membersId").runTransaction(new Transaction.Handler() {
-                    @Override
-                    public Transaction.Result doTransaction(MutableData mutableData) {
-                        ArrayList<GroupMember> members = mutableData.getValue(ArrayList.class);
-                        for(GroupMember member : members){
-                            if(member.getMemberId().equals(mUser.getUid()))
-                                members.remove(member);
-                        }
-                        mutableData.setValue(members);
-                        return Transaction.success(mutableData);
-                    }
-
-                    @Override
-                    public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
-                        Log.d(TAG,"Transaction removing my id completed");
-                    }
-                });
             }
 
             @Override
@@ -498,7 +482,9 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
             listener = new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    myRequestsRef.getParent().child(dataSnapshot.getValue(String.class)).child(mProfile.getNick()).setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP));
+                    DatabaseReference requestRef = myRequestsRef.getParent().child(dataSnapshot.getValue(String.class)).push();
+                    String id = requestRef.getKey();
+                    requestRef.setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP,id));
                 }
                 @Override
                 public void onCancelled(DatabaseError databaseError) {
@@ -514,7 +500,9 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
 
     private void stateGroupChanged(int state,String groupId){}
 
-    private void locationChanged(Location location, String userId, String groupId){}
+    private void locationChanged(Location location, String userId, String groupId){
+        Log.d(TAG, ""+location+userId+groupId);
+    }
 
 
     /********************************************************************************************/
@@ -666,7 +654,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
         }
     }
 
-    /****************************** INTERACTIONS WITH FRAGMENTS **************************/
+    /**************************** INTERACTIONS WITH FRAGMENTS **************************/
 
     @Override
     public ArrayList<Request> getRequests() {
@@ -675,4 +663,72 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
             return mService.getPendingRequests();
         return new ArrayList<>();
     }
+
+
+    @Override
+    public void acceptRequest(String requestId) {
+        Log.d(TAG,requestId);
+        myRequestsRef.child(requestId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                final Request request = dataSnapshot.getValue(Request.class);
+                Log.d(TAG,"group id: "+request.getIdGroup());
+                groupsRef.child(request.getIdGroup()).runTransaction(new Transaction.Handler() {
+                    @Override
+                    public Transaction.Result doTransaction(MutableData mutableData) {
+                        Group grupo = mutableData.getValue(Group.class);
+                        Log.d(TAG,"mutabledata "+mutableData+" group "+grupo);
+                        if (grupo==null)
+                            return Transaction.success(mutableData);
+                        else {
+                            Log.d(TAG, "NO NULO: " + mutableData);
+                            ArrayList<GroupMember> aux = grupo.getMembersId();
+                            GroupMember aux2 = new GroupMember(Group.GROUP_STATE_ACTIVE,mUser.getUid(),mProfile.getNick());
+                            if (!aux.contains(aux2))
+                                aux.add(aux2);
+                            grupo.setMembersId(aux);
+                            mutableData.setValue(grupo);
+                            Log.d(TAG, "FINAL  "+mutableData);
+                            return Transaction.success(mutableData);
+                        }
+                    }
+
+                    @Override
+                    public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
+
+                    }
+                });
+                myProfileRef.runTransaction(new Transaction.Handler() {
+                    @Override
+                    public Transaction.Result doTransaction(MutableData mutableData) {
+                        User user = mutableData.getValue(User.class);
+                        if (user == null)
+                            return Transaction.success(mutableData);
+                        user.addGroup(request.getIdGroup());
+                        mutableData.setValue(user);
+                        return Transaction.success(mutableData);
+                    }
+
+                    @Override
+                    public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
+
+                    }
+                });
+                dataSnapshot.getRef().removeValue();
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+    }
+
+    @Override
+    public void cancelRequest(String requestId){
+        myRequestsRef.child(requestId).removeValue();
+    }
+
+
 }

@@ -3,20 +3,21 @@
     android:orientation="horizontal"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="7dp">
+    android:padding="10dp">
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_weight="1">
+        android:layout_weight="2">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/notif_title"
             android:text="Notif"
-            android:textSize="20dp"/>
+            android:textSize="22dp"
+            android:textStyle="bold"/>
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -25,6 +26,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:id="@+id/notif_type"
+                android:textSize="11dp"
                 android:text="Type"/>
             <View
                 android:layout_width="0dp"
@@ -44,19 +46,21 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:paddingLeft="6dp"
+        android:layout_marginLeft="20dp"
         android:orientation="horizontal">
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        <ImageButton
+            android:layout_width="45dp"
+            android:layout_height="40dp"
             android:id="@+id/accept_notif_button"
-            android:text="Accept"/>
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:background="@drawable/ic_accept_background"
+            android:src="@drawable/ic_action_checked"/>
+        <ImageButton
+            android:layout_width="45dp"
+            android:layout_height="40dp"
             android:id="@+id/cancel_notif_button"
-            android:text="Cancel"/>
+            android:background="@drawable/ic_cancel_background"
+            android:src="@drawable/ic_cancel"/>
 
     </LinearLayout>
 

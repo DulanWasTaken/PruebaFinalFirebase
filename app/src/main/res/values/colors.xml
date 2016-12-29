@@ -6,4 +6,6 @@
 
     <color name="transparent">#CA2E2E2E</color>
     <color name="divider_gray">#9e9e9e</color>
+    <color name="validate_green">#A9F5A9</color>
+    <color name="cancel_red">#DB736B</color>
 </resources>
