@@ -1,19 +1,27 @@
 package es.udc.tfg.pruebafinalfirebase;
 
+import android.Manifest;
 import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.view.MenuItemCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -26,6 +34,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -40,6 +49,17 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
@@ -57,38 +77,52 @@ import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 
-public class MainActivity extends AppCompatActivity implements Notifications_fragment.OnNotifFragmentInteractionListener,NotifRecyclerViewAdapter.OnNotifAdapterInteractionListener {
+public class MainActivity extends AppCompatActivity implements Filter_fragment.OnFilterFragmentInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback,FirebaseBackgroundListeners.OnServiceInteractionListener,Notifications_fragment.OnNotifFragmentInteractionListener,NotifRecyclerViewAdapter.OnNotifAdapterInteractionListener {
 
     private String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
+    public static final String MAP_FRAGMENT_TAG = "MAP_FRAGMENT_TAG";
+    public static final String FILTER_FRAGMENT_TAG = "FILTER_FRAGMENT_TAG";
     public static final int RC_SIGN_IN = 777;
     public static final int RC_PHONE_CONTACTS = 888;
     public static final int RC_EMAIL_CONTACTS = 999;
     public static final int RC_KEY_CONTACTS = 6;
     public static final int PERMISSION_REQUEST_READ_CONTACTS = 333;
+    public static final int PERMISSION_REQUEST_LOCATION = 222;
     public boolean initListeners = true;
+    public boolean myLocationEnabled = false;
+    public boolean mapLoaded=false;
 
-    public ArrayList<String> myGroups = new ArrayList<>();
+    public ArrayList<String> myActiveGroups = new ArrayList<>();
+    public ArrayList<String> myFilteredGroups = new ArrayList<>();
+    public HashMap<String,Marker> markersHM = new HashMap<String,Marker>();
 
     private RelativeLayout main_content;
-    private MenuItem menuItemLog,menuItemShare,menuItemNotif;
+    private FloatingActionButton locationFab;
+    private DrawerLayout mDrawerLayout;
+    private NavigationView navigationView;
+    private MenuItem menuItemLog,menuItemShare,menuItemNotif,menuItemFilter;
+    private Button notifications;
     private Menu menu;
     private Dialog pb;
     private ActionBar ab;
 
-    FragmentManager fragmentManager;
+    public FragmentManager fragmentManager;
+    public SharedPreferences pref;
 
     private FirebaseBackgroundListeners mService;
     private ServiceConnection mConnection;
     private boolean mBound;
 
-    private GoogleApiClient mGoogleApiClient;
+    private GoogleApiClient mGoogleAuthApiClient;
     private GoogleSignInOptions gso;
+    private GoogleMap mGoogleMap;
 
     private FirebaseAuth mAuth;
     private FirebaseUser mUser;
@@ -114,14 +148,14 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
         pb.getWindow().setBackgroundDrawableResource(R.color.transparent);
         pb.setContentView(view);
         pb.setCancelable(false);
-        pb.show();
+        //pb.show();
         /************************ INICILIZAR GOOGLE API ********************************/
         gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build();
 
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
+        mGoogleAuthApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this, new GoogleApiClient.OnConnectionFailedListener() {
                     @Override
                     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
@@ -131,6 +165,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .addApi(AppInvite.API)
                 .build();
+
         /*********************** INICILIZAR LAS VARIABLES FIREBASE **************************/
         database = FirebaseDatabase.getInstance();
         mAuth = FirebaseAuth.getInstance();
@@ -138,16 +173,62 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
         groupsRef = database.getReference().child("groups");
         /************************** INICIALIZAR OTRAS VARIABLES ***************************/
         fragmentManager = getSupportFragmentManager();
+        pref = getSharedPreferences("MYSERVICE", Context.MODE_PRIVATE);
+        myLocationEnabled = pref.getBoolean("locationEnabled",false);
         /**************************** INICILIZAR LAS VIEWS ********************************/
         setContentView(R.layout.activity_main);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         ab = getSupportActionBar();
+        ab.setTitle("W'U");
 
+        locationFab = (FloatingActionButton) findViewById(R.id.location_fab);
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         main_content = (RelativeLayout) findViewById(R.id.main_content);
+        navigationView = (NavigationView) findViewById(R.id.navigation_view);
+
         /*********************** INICILIZAR LOS ONCLICKLISTENERS **************************/
 
+        navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(MenuItem menuItem) {
+                menuItem.setChecked(true);
+                mDrawerLayout.closeDrawers();
+                switch (menuItem.getItemId()){
+                    case R.id.drawer_map:
+                        if(fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG)==null){
+                            SupportMapFragment mMapFragment = SupportMapFragment.newInstance();
+                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                            fragmentTransaction.add(R.id.main_content, mMapFragment,MAP_FRAGMENT_TAG);
+                            fragmentTransaction.commit();
+                            mMapFragment.getMapAsync(MainActivity.this);
+
+                            Toast.makeText(MainActivity.this,"Map Fragment",Toast.LENGTH_SHORT).show();
+                        }
+                        break;
+                    case R.id.drawer_groups:
+                        Toast.makeText(MainActivity.this,"Group Fragment",Toast.LENGTH_SHORT).show();
+                        break;
+                }
+                return true;
+            }
+        });
+
+        if(myLocationEnabled)
+            locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccentDark)));
+        locationFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(myLocationEnabled) {
+                    locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccent)));
+                    disableMyLocation();
+                }else{
+                    locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccentDark)));
+                    enableMyLocation();
+                }
+            }
+        });
 
         /***********************  COMPROBAR ESTADO DE AUTENTICACIÓN **************************/
         mAuthListener = new FirebaseAuth.AuthStateListener() {
@@ -184,7 +265,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
                                                 String phoneNumber = et.getText().toString();
                                                 String nick = et2.getText().toString();
                                                 if (!phoneNumber.equals("")&&!nick.equals("")){
-                                                    pb.show();
+                                                    //pb.show();
                                                     createProfile(phoneNumber,nick);
                                                 }
                                             }
@@ -212,6 +293,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
             }
         };
         mAuth.addAuthStateListener(mAuthListener);
+
     }
 
     @Override
@@ -231,7 +313,18 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
             menuItemNotif.setEnabled(true);
             menuItemShare.setVisible(true);
             menuItemNotif.setVisible(true);
+            menuItemFilter.setVisible(true);
         }
+
+        ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
+        ab.setDisplayHomeAsUpEnabled(true);
+
+        /***************************** SET MAIN FRAGMENT *********************************/
+        SupportMapFragment mMapFragment = SupportMapFragment.newInstance();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.add(R.id.map_fragment_content, mMapFragment,MAP_FRAGMENT_TAG);
+        fragmentTransaction.commit();
+        mMapFragment.getMapAsync(this);
     }
 
     private void disableButtons(){
@@ -242,14 +335,22 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
             menuItemShare.setVisible(false);
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
+            menuItemFilter.setVisible(false);
         }
-
+        locationFab.setVisibility(View.INVISIBLE);
+        ab.setDisplayHomeAsUpEnabled(false);
+        SupportMapFragment map = (SupportMapFragment) fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG);
+        if(map!=null) {
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            fragmentTransaction.remove(map);
+            fragmentTransaction.commit();
+        }
     }
 
     private void logout(){
         Log.d(TAG,"logout");
         mAuth.signOut();
-        Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
+        Auth.GoogleSignInApi.signOut(mGoogleAuthApiClient).setResultCallback(
                 new ResultCallback<Status>() {
                     @Override
                     public void onResult(Status status) {
@@ -258,7 +359,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
                 });
     }
     private void login(){
-        Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
+        Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleAuthApiClient);
         startActivityForResult(signInIntent,RC_SIGN_IN);
     }
 
@@ -285,6 +386,10 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
                 FirebaseBackgroundListeners.LocalBinder binder = (FirebaseBackgroundListeners.LocalBinder) service;
                 mService = binder.getService();
                 mBound = true;
+                if(notifications!=null)
+                    notifications.setText(mService.registerClient(MainActivity.this)+"");
+
+                locationFab.setVisibility(View.VISIBLE);
                 enableButtons();
                 pb.cancel();
             }
@@ -303,7 +408,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
         myProfileRef.child("groupsId").addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                pb.show();
+                //pb.show();
                 String groupId = dataSnapshot.getValue(String.class);
                 initGroupListeners(dataSnapshot.getValue(String.class));
             }
@@ -363,7 +468,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
                 locationValueListener = new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
-                        locationChanged(dataSnapshot.getValue(Location.class),member.getMemberId(),groupId);
+                        locationChanged(dataSnapshot.getValue(Location.class),member.getMemberId(),member.getNick(),groupId);
                     }
 
                     @Override
@@ -496,12 +601,54 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
 
     }
 
-    private void groupNameChanged(String name, String groupId){}
+    private void groupNameChanged(String name, String groupId){
+    }
 
-    private void stateGroupChanged(int state,String groupId){}
+    private void stateGroupChanged(int state,String groupId){
+        Log.d(TAG,"STATE CHANGED TO: "+state+" OF GROUP: "+groupId);
+        switch (state){
+            case Group.GROUP_STATE_ACTIVE:
+                if(!myActiveGroups.contains(groupId)){
+                    myActiveGroups.add(groupId);
+                    myFilteredGroups.add(groupId);
+                }
+                break;
+            case Group.GROUP_STATE_STOPPED:
+                if(myActiveGroups.contains(groupId)){
+                    myActiveGroups.remove(groupId);
+                    myFilteredGroups.remove(groupId);
+                }
+                break;
+        }
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        Filter_fragment existFragment = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
+        if (existFragment != null){
+            existFragment.onResume();
+        }
+    }
 
-    private void locationChanged(Location location, String userId, String groupId){
-        Log.d(TAG, ""+location+userId+groupId);
+    private void locationChanged(Location location, String userId,String nick, String groupId){
+        Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+userId+"       "+groupId);
+
+        if(mapLoaded && mGoogleMap!=null){
+            if(!markersHM.containsKey(userId+"/"+groupId)){
+                Marker marker = mGoogleMap.addMarker(new MarkerOptions()
+                    .position(new LatLng(location.getLat(),location.getLng()))
+                    .title(nick));
+                markersHM.put(userId+"/"+groupId,marker);
+            }else{
+                Marker marker = markersHM.get(userId+"/"+groupId);
+                marker.setPosition(new LatLng(location.getLat(),location.getLng()));
+            }
+
+            LatLngBounds.Builder builder = new LatLngBounds.Builder();
+            for(HashMap.Entry<String,Marker> pair : markersHM.entrySet()){
+                Marker marker = (Marker) pair.getValue();
+                builder.include(marker.getPosition());
+            }
+            LatLngBounds bounds = builder.build();
+            mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds,200));
+        }
     }
 
 
@@ -583,18 +730,21 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
-            case PERMISSION_REQUEST_READ_CONTACTS: {
+            case PERMISSION_REQUEST_READ_CONTACTS:
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     checkPermissions();
                 } else {
                     Toast.makeText(MainActivity.this,"Permissions denied",Toast.LENGTH_SHORT).show();
                 }
-                return;
-            }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
+                break;
+            case PERMISSION_REQUEST_LOCATION:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    enableMyLocation();
+                } else {
+                    Toast.makeText(MainActivity.this,"Permissions denied",Toast.LENGTH_SHORT).show();
+                }
+                break;
         }
     }
 
@@ -605,14 +755,42 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
         menuItemLog = menu.findItem(R.id.action_log);
         menuItemShare = menu.findItem(R.id.action_share);
         menuItemNotif = menu.findItem(R.id.action_notifications);
+        menuItemFilter = menu.findItem(R.id.action_filter);
         if(mUser!=null)
             menuItemLog.setTitle("Sign out");
         else {
             menuItemShare.setVisible(false);
             menuItemNotif.setVisible(false);
+            menuItemFilter.setVisible(false);
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
         }
+        MenuItemCompat.setActionView(menu.findItem(R.id.action_notifications), R.layout.notification_badge);
+        View count = menu.findItem(R.id.action_notifications).getActionView();
+        notifications = (Button) count.findViewById(R.id.notif);
+        if(mBound)
+            notifications.setText(mService.registerClient(MainActivity.this));
+        notifications.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FragmentTransaction transaction = fragmentManager.beginTransaction();
+                Notifications_fragment existFragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
+                if (existFragment != null){
+                    notifications.setBackground(getResources().getDrawable(R.drawable.shape_notifs));
+                    transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_CLOSE);
+                    transaction.remove(existFragment);
+                    transaction.commit();
+                    fragmentManager.popBackStack();
+                }else{
+                    notifications.setBackground(getResources().getDrawable(R.drawable.shape_notifs_clicked));
+                    Notifications_fragment fragment = new Notifications_fragment();
+                    transaction.replace(R.id.notif_fragment_content,fragment,NOTIF_FRAGMENT_TAG);
+                    transaction.addToBackStack(NOTIF_FRAGMENT_TAG);
+                    transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
+                    transaction.commit();
+                }
+            }
+        });
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -620,7 +798,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_log:
-                pb.show();
+                //pb.show();
                 if(menuItemLog.getTitle().toString().equals("Sign in"))
                     login();
                 else if(menuItemLog.getTitle().toString().equals("Sign out"))
@@ -629,24 +807,24 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
             case R.id.action_share:
                 checkPermissions();
                 return true;
-            case R.id.action_notifications:
+            case android.R.id.home:
+                mDrawerLayout.openDrawer(GravityCompat.START);
+                return true;
+            case R.id.action_filter:
                 FragmentTransaction transaction = fragmentManager.beginTransaction();
-                Notifications_fragment existFragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
+                Filter_fragment existFragment = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
                 if (existFragment != null){
-                    menuItemNotif.setIcon(R.mipmap.ic_notif);
-                    Log.d(TAG,"FRAGMENT EXISTS");
+                    transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
                     transaction.remove(existFragment);
                     transaction.commit();
                     fragmentManager.popBackStack();
                 }else{
-                    menuItemNotif.setIcon(R.mipmap.ic_notif_pressed);
-                    Notifications_fragment fragment = new Notifications_fragment();
-                    transaction.replace(R.id.fragment_content,fragment,NOTIF_FRAGMENT_TAG);
-                    transaction.addToBackStack(NOTIF_FRAGMENT_TAG);
+                    Filter_fragment fragment = new Filter_fragment();
+                    transaction.add(R.id.filter_fragment_content,fragment,FILTER_FRAGMENT_TAG);
+                    transaction.addToBackStack(FILTER_FRAGMENT_TAG);
                     transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
                     transaction.commit();
                 }
-
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -654,7 +832,7 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
         }
     }
 
-    /**************************** INTERACTIONS WITH FRAGMENTS **************************/
+    /************************** INTERACTIONS WITH INTERFACES **************************/
 
     @Override
     public ArrayList<Request> getRequests() {
@@ -730,5 +908,94 @@ public class MainActivity extends AppCompatActivity implements Notifications_fra
         myRequestsRef.child(requestId).removeValue();
     }
 
+    @Override
+    public void onRequestReceived(String requestId) {
+        int aux = Integer.parseInt(notifications.getText().toString());
+        aux++;
+        notifications.setText(String.valueOf(aux));
+
+        Notifications_fragment existFragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
+        if (existFragment != null){
+            existFragment.onResume();
+        }
+    }
+
+    @Override
+    public void onRequestRemoved() {
+        int aux = Integer.parseInt(notifications.getText().toString());
+        aux--;
+        notifications.setText(String.valueOf(aux));
+
+        Notifications_fragment existFragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
+        if (existFragment != null){
+            existFragment.onResume();
+        }
+    }
+
+    @Override
+    public void addFilteredGroup(String groupId) {
+        myFilteredGroups.add(groupId);
+
+        for(HashMap.Entry<String,Marker> pair : markersHM.entrySet()){
+            if(pair.getKey().endsWith(groupId))
+                pair.getValue().setVisible(true);
+        }
+    }
+
+    @Override
+    public void removeFilteredGroup(String groupId) {
+        myFilteredGroups.remove(groupId);
+
+        for(HashMap.Entry<String,Marker> pair : markersHM.entrySet()){
+            if(pair.getKey().endsWith(groupId))
+                pair.getValue().setVisible(false);
+        }
+    }
+
+    @Override
+    public ArrayList<String> getActiveGroups() {
+        Log.d(TAG,"ñlkdsjfklasjdfañldsjkfña ACTIVE: "+ myActiveGroups.toString());
+        return myActiveGroups;
+    }
+
+    @Override
+    public ArrayList<String> getFilteredGroups() {
+        Log.d(TAG,"KALÑDJFASÑJDFKLAJÑDF FILTERED: "+myFilteredGroups);
+        return myFilteredGroups;
+    }
+
+    /******************************* GOOGLE MAPS/LOCATION CALLBACKS ****************************/
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mGoogleMap = googleMap;
+        googleMap.setOnMapLoadedCallback(this);
+        googleMap.getUiSettings().setMapToolbarEnabled(false);
+
+    }
+
+    private void enableMyLocation(){
+        if ((ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)&&(ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_LOCATION);
+        } else {
+            if(mBound)
+                myLocationEnabled = mService.enableLocation();
+        }
+    }
+
+    private void disableMyLocation(){
+        if(mBound)
+            myLocationEnabled = mService.disableLocation();
+    }
+
+    @Override
+    public void onMapLoaded() {
+        mapLoaded = true;
+    }
+
+    @Override
+    public void onLocationChanged(Location location, String userId){
+        locationChanged(location,userId,mProfile.getNick(),"");
+    }
 
 }

@@ -5,13 +5,19 @@
         android:id="@+id/action_share"
         android:icon="@android:drawable/ic_menu_share"
         android:title="Share"
-        app:showAsAction="ifRoom"
+        app:showAsAction="always"
         android:enabled="true"/>
     <item
         android:id="@+id/action_notifications"
         android:icon="@mipmap/ic_notif"
         android:title="Notifications"
-        app:showAsAction="ifRoom"
+        app:showAsAction="always"
+        android:enabled="true"/>
+    <item
+        android:id="@+id/action_filter"
+        android:icon="@drawable/ic_action_filtericon"
+        android:title="Filter"
+        app:showAsAction="always"
         android:enabled="true"/>
     <item
         android:id="@+id/action_log"
