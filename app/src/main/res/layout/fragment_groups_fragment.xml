@@ -1,16 +1,15 @@
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="es.udc.tfg.pruebafinalfirebase.notificationsFragment.Notifications_fragment"
-    android:background="@drawable/framelayout_border">
+    tools:context="es.udc.tfg.pruebafinalfirebase.EditGroupFragment.Groups_fragment">
 
     <android.support.v7.widget.RecyclerView
-        android:id="@+id/notifications_recyclerview"
+        android:id="@+id/groups_recyclerview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="vertical">
 
     </android.support.v7.widget.RecyclerView>
 
-</FrameLayout>
+</LinearLayout>

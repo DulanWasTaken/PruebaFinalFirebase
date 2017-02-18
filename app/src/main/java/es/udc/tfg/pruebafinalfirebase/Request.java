@@ -10,6 +10,7 @@ public class Request {
     public final static int REQUEST_CANCELLED = -1;
 
     public final static int REQUEST_TYPE_GROUP = 11;
+    public final static int REQUEST_TYPE_DELETED = 33;
     public final static int REQUEST_TYPE_START_SHARING = 22;
 
     private String idGroup,id;

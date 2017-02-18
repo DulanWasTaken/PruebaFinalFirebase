@@ -14,6 +14,7 @@ public class Group {
     private ArrayList<GroupMember> membersId;
     private long time;
     private int state;
+    private String id;
 
     public Group() {
     }
@@ -57,5 +58,25 @@ public class Group {
         if(membersId == null)
             membersId = new ArrayList<>();
         membersId.add(member);
+    }
+
+    public void removeMember(String id){
+        if(id!=null && !id.equals("")){
+            for(GroupMember member : membersId){
+                if(member.getMemberId().equals(id))
+                    membersId.remove(member);
+            }
+        }
+    }
+
+    public void setId(String id){
+        this.id=id;
+    }
+
+    public String getId(){
+        String result="";
+        if(id!=null)
+            result = id;
+        return result;
     }
 }

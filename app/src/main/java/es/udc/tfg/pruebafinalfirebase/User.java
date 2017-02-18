@@ -18,12 +18,13 @@ public class User {
     private long time;
     private String status;
     private ArrayList<String> groupsId;
+    private String request;
 
     public User (){
 
     }
 
-    public User(String email, String key, String id, String phoneNumber,String nick, Location location, ArrayList<InterestPoint> interestPoints,String status, ArrayList<String> groupsId) {
+    public User(String email, String key, String id, String phoneNumber,String nick, Location location, ArrayList<InterestPoint> interestPoints,String status, ArrayList<String> groupsId,String request) {
         this.email = email;
         this.key = key;
         this.id = id;
@@ -34,6 +35,7 @@ public class User {
         this.status = status;
         this.nick = nick;
         this.groupsId = groupsId;
+        this.request = request;
     }
 
     public String getNick() {
@@ -110,7 +112,15 @@ public class User {
         groupsId.add(groupId);
     }
 
+    public void removeGroup(String groupId){
+        groupsId.remove(groupId);
+    }
+
     public ArrayList<String> getGroupsId(){
         return groupsId;
+    }
+
+    public String getRequest(){
+        return request;
     }
 }

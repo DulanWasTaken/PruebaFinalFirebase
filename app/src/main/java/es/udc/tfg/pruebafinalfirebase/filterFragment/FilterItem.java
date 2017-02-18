@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.filterFragment;
 
 /**
  * Created by Usuario on 03/01/2017.

@@ -39,9 +39,11 @@ public class Utils {
                 }else{
                     result = result+", "+member;
                 }
+            }else{
+                result = result+"...";
             }
         }
 
-        return result+"...";
+        return result;
     }
 }

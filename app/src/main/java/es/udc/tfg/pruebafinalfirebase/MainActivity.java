@@ -6,16 +6,18 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
@@ -49,9 +51,6 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -79,32 +78,43 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 
+import es.udc.tfg.pruebafinalfirebase.EditGroupFragment.EditGroupFragment;
+import es.udc.tfg.pruebafinalfirebase.EditGroupFragment.GroupMemberRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.EditGroupFragment.GroupsRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.EditGroupFragment.Groups_fragment;
+import es.udc.tfg.pruebafinalfirebase.filterFragment.FilterRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.filterFragment.Filter_fragment;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
+import es.udc.tfg.pruebafinalfirebase.notificationsFragment.NotifRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.notificationsFragment.Notifications_fragment;
 
-public class MainActivity extends AppCompatActivity implements Filter_fragment.OnFilterFragmentInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback,FirebaseBackgroundListeners.OnServiceInteractionListener,Notifications_fragment.OnNotifFragmentInteractionListener,NotifRecyclerViewAdapter.OnNotifAdapterInteractionListener {
+public class MainActivity extends AppCompatActivity implements GroupMemberRecyclerViewAdapter.OnGroupMemberAdapterInteractionListener,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback,FirebaseBackgroundListeners.OnServiceInteractionListener,Notifications_fragment.OnNotifFragmentInteractionListener,NotifRecyclerViewAdapter.OnNotifAdapterInteractionListener {
 
     private String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
     public static final String MAP_FRAGMENT_TAG = "MAP_FRAGMENT_TAG";
+    public static final String GROUPS_FRAGMENT_TAG = "GROUPS_FRAGMENT_TAG";
     public static final String FILTER_FRAGMENT_TAG = "FILTER_FRAGMENT_TAG";
+    public static final String EDIT_GROUP_FRAGMENT_TAG = "EDIT_GROUP_FRAGMENT_TAG";
     public static final int RC_SIGN_IN = 777;
     public static final int RC_PHONE_CONTACTS = 888;
     public static final int RC_EMAIL_CONTACTS = 999;
     public static final int RC_KEY_CONTACTS = 6;
+    public static final int RC_CHECK_SETTINGS = 666;
     public static final int PERMISSION_REQUEST_READ_CONTACTS = 333;
     public static final int PERMISSION_REQUEST_LOCATION = 222;
-    public boolean initListeners = true;
+    public boolean initListenersFinished = false;
     public boolean myLocationEnabled = false;
     public boolean mapLoaded=false;
+    public boolean myProfileCreated = false;
 
     public ArrayList<String> myActiveGroups = new ArrayList<>();
     public ArrayList<String> myFilteredGroups = new ArrayList<>();
     public HashMap<String,Marker> markersHM = new HashMap<String,Marker>();
 
     private RelativeLayout main_content;
-    private FloatingActionButton locationFab;
+    private FloatingActionButton locationFab,autoZoomFab;
     private DrawerLayout mDrawerLayout;
     private NavigationView navigationView;
     private MenuItem menuItemLog,menuItemShare,menuItemNotif,menuItemFilter;
@@ -148,7 +158,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         pb.getWindow().setBackgroundDrawableResource(R.color.transparent);
         pb.setContentView(view);
         pb.setCancelable(false);
-        //pb.show();
+        pb.show();
         /************************ INICILIZAR GOOGLE API ********************************/
         gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
@@ -175,6 +185,31 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentManager = getSupportFragmentManager();
         pref = getSharedPreferences("MYSERVICE", Context.MODE_PRIVATE);
         myLocationEnabled = pref.getBoolean("locationEnabled",false);
+        myProfileCreated = pref.getBoolean("profileCreated",false);
+
+        mConnection = new ServiceConnection() {
+
+            @Override
+            public void onServiceConnected(ComponentName className, IBinder service) {
+                // We've bound to LocalService, cast the IBinder and get LocalService instance
+                FirebaseBackgroundListeners.LocalBinder binder = (FirebaseBackgroundListeners.LocalBinder) service;
+                mService = binder.getService();
+                mBound = true;
+                if(notifications!=null)
+                    notifications.setText(mService.registerClient(MainActivity.this)+"");
+
+                locationFab.setEnabled(true);
+                if(mBound && initListenersFinished)
+                    enableButtons();
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName arg0) {
+                mService.disconnectService();
+                locationFab.setEnabled(false);
+                mBound = false;
+            }
+        };
         /**************************** INICILIZAR LAS VIEWS ********************************/
         setContentView(R.layout.activity_main);
 
@@ -184,6 +219,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         ab.setTitle("W'U");
 
         locationFab = (FloatingActionButton) findViewById(R.id.location_fab);
+        autoZoomFab = (FloatingActionButton) findViewById(R.id.auto_view_fab);
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         main_content = (RelativeLayout) findViewById(R.id.main_content);
         navigationView = (NavigationView) findViewById(R.id.navigation_view);
@@ -195,26 +231,47 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             public boolean onNavigationItemSelected(MenuItem menuItem) {
                 menuItem.setChecked(true);
                 mDrawerLayout.closeDrawers();
+
+                SupportMapFragment mapFragment = (SupportMapFragment)fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG);
                 switch (menuItem.getItemId()){
                     case R.id.drawer_map:
+                        setMapFragmentActionBar();
                         if(fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG)==null){
                             SupportMapFragment mMapFragment = SupportMapFragment.newInstance();
                             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                            fragmentTransaction.add(R.id.main_content, mMapFragment,MAP_FRAGMENT_TAG);
+                            fragmentTransaction.replace(R.id.map_fragment_content, mMapFragment,MAP_FRAGMENT_TAG);
                             fragmentTransaction.commit();
                             mMapFragment.getMapAsync(MainActivity.this);
 
                             Toast.makeText(MainActivity.this,"Map Fragment",Toast.LENGTH_SHORT).show();
+                        }else if(fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG)!=null){
+                            Fragment groupFrag = fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG);
+                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                            fragmentTransaction.remove(groupFrag);
+                            fragmentTransaction.commit();
                         }
+                        mapFragment.getView().setVisibility(View.VISIBLE);
                         break;
                     case R.id.drawer_groups:
-                        Toast.makeText(MainActivity.this,"Group Fragment",Toast.LENGTH_SHORT).show();
+                        setGroupsFragmentActionBar();
+                        if(fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG)==null){
+                            mapFragment.getView().setVisibility(View.GONE);
+                            Fragment groupFrag = new Groups_fragment();
+                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                            fragmentTransaction.add(R.id.map_fragment_content, groupFrag,GROUPS_FRAGMENT_TAG);
+                            fragmentTransaction.addToBackStack(null);
+                            fragmentTransaction.commit();
+
+                            Toast.makeText(MainActivity.this,"Group Fragment",Toast.LENGTH_SHORT).show();
+                        }
                         break;
                 }
                 return true;
             }
         });
 
+        locationFab.setEnabled(false);
+        autoZoomFab.setEnabled(false);
         if(myLocationEnabled)
             locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccentDark)));
         locationFab.setOnClickListener(new View.OnClickListener() {
@@ -223,10 +280,32 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 if(myLocationEnabled) {
                     locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccent)));
                     disableMyLocation();
+                    Snackbar.make(v, "Location disabled", Snackbar.LENGTH_LONG).show();
                 }else{
                     locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccentDark)));
                     enableMyLocation();
+                    Snackbar.make(v, "Location enabled", Snackbar.LENGTH_LONG).show();
                 }
+            }
+        });
+
+        autoZoomFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean empty = true;
+                LatLngBounds.Builder builder = new LatLngBounds.Builder();
+                for (HashMap.Entry<String, Marker> pair : markersHM.entrySet()) {
+                    Marker marker = (Marker) pair.getValue();
+                    if (marker.isVisible()) {
+                        empty=false;
+                        builder.include(marker.getPosition());
+                    }
+                }
+                if(!empty) {
+                    LatLngBounds bounds = builder.build();
+                    mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 200));
+                }
+
             }
         });
 
@@ -265,13 +344,14 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                                                 String phoneNumber = et.getText().toString();
                                                 String nick = et2.getText().toString();
                                                 if (!phoneNumber.equals("")&&!nick.equals("")){
-                                                    //pb.show();
                                                     createProfile(phoneNumber,nick);
                                                 }
                                             }
                                         })
                                         .show();
                             }else{
+                                myProfileCreated = true;
+                                pref.edit().putBoolean("profileCreated",true).commit();
                                 mProfile=dataSnapshot.getValue(User.class);
                                 initListeners();
                                 myProfileRef.removeEventListener(this);
@@ -297,16 +377,25 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (mBound) {
-            unbindService(mConnection);
-            mBound = false;
+    protected void onStart(){
+        super.onStart();
+        Log.d(TAG,myProfileCreated+" adksñlfjasñklfjña");
+        if (myProfileCreated) {
+            Intent intent = new Intent(this, FirebaseBackgroundListeners.class);
+            bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
         }
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mService.disconnectService();
+        if(mBound)
+            unbindService(mConnection);
+        mBound=false;
+    }
+
     private void enableButtons(){
-        pb.cancel();
         if (menu != null){
             menuItemLog.setEnabled(true);
             menuItemShare.setEnabled(true);
@@ -315,39 +404,69 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             menuItemNotif.setVisible(true);
             menuItemFilter.setVisible(true);
         }
+        locationFab.setVisibility(View.VISIBLE);
+        autoZoomFab.setVisibility(View.VISIBLE);
 
         ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
         ab.setDisplayHomeAsUpEnabled(true);
 
-        /***************************** SET MAIN FRAGMENT *********************************/
         SupportMapFragment mMapFragment = SupportMapFragment.newInstance();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        fragmentTransaction.add(R.id.map_fragment_content, mMapFragment,MAP_FRAGMENT_TAG);
+        fragmentTransaction.replace(R.id.map_fragment_content, mMapFragment,MAP_FRAGMENT_TAG);
         fragmentTransaction.commit();
-        mMapFragment.getMapAsync(this);
+        mMapFragment.getMapAsync(MainActivity.this);
+
+        pb.cancel();
     }
 
     private void disableButtons(){
-        pb.cancel();
         if (menu != null) {
             menuItemLog.setEnabled(true);
             menuItemNotif.setVisible(false);
             menuItemShare.setVisible(false);
-            menuItemShare.setEnabled(false);
-            menuItemNotif.setEnabled(false);
             menuItemFilter.setVisible(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
+        autoZoomFab.setVisibility(View.INVISIBLE);
         ab.setDisplayHomeAsUpEnabled(false);
         SupportMapFragment map = (SupportMapFragment) fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG);
         if(map!=null) {
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
             fragmentTransaction.remove(map);
             fragmentTransaction.commit();
+            fragmentManager.executePendingTransactions();
         }
+        pb.cancel();
+    }
+
+    private void setGroupsFragmentActionBar(){
+        if (menu != null){
+            menuItemLog.setEnabled(true);
+            menuItemShare.setEnabled(true);
+            menuItemNotif.setEnabled(true);
+            menuItemShare.setVisible(true);
+            menuItemNotif.setVisible(true);
+            menuItemFilter.setVisible(false);
+        }
+        locationFab.setVisibility(View.GONE);
+        autoZoomFab.setVisibility(View.GONE);
+    }
+
+    private void setMapFragmentActionBar(){
+        if (menu != null){
+            menuItemLog.setEnabled(true);
+            menuItemShare.setEnabled(true);
+            menuItemNotif.setEnabled(true);
+            menuItemShare.setVisible(true);
+            menuItemNotif.setVisible(true);
+            menuItemFilter.setVisible(true);
+        }
+        locationFab.setVisibility(View.VISIBLE);
+        autoZoomFab.setVisibility(View.VISIBLE);
     }
 
     private void logout(){
+        pb.show();
         Log.d(TAG,"logout");
         mAuth.signOut();
         Auth.GoogleSignInApi.signOut(mGoogleAuthApiClient).setResultCallback(
@@ -359,56 +478,32 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 });
     }
     private void login(){
+        pb.show();
         Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleAuthApiClient);
         startActivityForResult(signInIntent,RC_SIGN_IN);
     }
 
     private void createProfile(String phoneNumber, String nick){
-        User mProfile = new User(Utils.generateValidEmail(mUser.getEmail()),"",mUser.getUid(),phoneNumber,nick,new Location(),new ArrayList<InterestPoint>(),"",new ArrayList<String>());
-        myProfileRef.setValue(mProfile);
+        String email = Utils.generateValidEmail(mUser.getEmail());
+        String requestsId = email+phoneNumber+"";
+        database.getReference().child("publicIds").child(email).setValue(requestsId);
+        database.getReference().child("publicIds").child(phoneNumber).setValue(requestsId);
 
-        String requestsId = mProfile.getEmail()+mProfile.getPhoneNumber()+mProfile.getKey();
-        database.getReference().child("publicIds").child(mProfile.getEmail()).setValue(requestsId);
-        database.getReference().child("publicIds").child(mProfile.getPhoneNumber()).setValue(requestsId);
-        if(!mProfile.getKey().equals(""))
-            database.getReference().child("publicIds").child(mProfile.getKey()).setValue(requestsId);
+        //database.getReference().child("publicIds").child(mProfile.getKey()).setValue(requestsId);
+
+        User mProfile = new User(email,"",mUser.getUid(),phoneNumber,nick,new Location(),new ArrayList<InterestPoint>(),"",new ArrayList<String>(),requestsId);
+        myProfileRef.setValue(mProfile);
     }
 
     private void initListeners(){
         Log.d(TAG,"init listeners");
         startService(new Intent(MainActivity.this,FirebaseBackgroundListeners.class));
 
-        mConnection = new ServiceConnection() {
-
-            @Override
-            public void onServiceConnected(ComponentName className, IBinder service) {
-                // We've bound to LocalService, cast the IBinder and get LocalService instance
-                FirebaseBackgroundListeners.LocalBinder binder = (FirebaseBackgroundListeners.LocalBinder) service;
-                mService = binder.getService();
-                mBound = true;
-                if(notifications!=null)
-                    notifications.setText(mService.registerClient(MainActivity.this)+"");
-
-                locationFab.setVisibility(View.VISIBLE);
-                enableButtons();
-                pb.cancel();
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName arg0) {
-                mBound = false;
-            }
-        };
-
-        Intent intent = new Intent(this, FirebaseBackgroundListeners.class);
-        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
-
         myRequestsRef = database.getReference().child("requests").child(mProfile.getEmail()+mProfile.getPhoneNumber());
 
         myProfileRef.child("groupsId").addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                //pb.show();
                 String groupId = dataSnapshot.getValue(String.class);
                 initGroupListeners(dataSnapshot.getValue(String.class));
             }
@@ -436,6 +531,13 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
             }
         });
+
+        Intent intent = new Intent(this, FirebaseBackgroundListeners.class);
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+
+        initListenersFinished = true;
+        if(mBound && initListenersFinished)
+            enableButtons();
     }
 
     private void initGroupListeners(final String groupId){
@@ -511,7 +613,6 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         groupsRef.child(groupId).child("name").addValueEventListener(nameGroupListener);
         groupsRef.child(groupId).child("state").addValueEventListener(stateGroupListener);
         groupsRef.child(groupId).child("membersId").addChildEventListener(membersGroupListener);
-        pb.cancel();
     }
 
     private void checkPermissions(){
@@ -641,13 +742,6 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 marker.setPosition(new LatLng(location.getLat(),location.getLng()));
             }
 
-            LatLngBounds.Builder builder = new LatLngBounds.Builder();
-            for(HashMap.Entry<String,Marker> pair : markersHM.entrySet()){
-                Marker marker = (Marker) pair.getValue();
-                builder.include(marker.getPosition());
-            }
-            LatLngBounds bounds = builder.build();
-            mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds,200));
         }
     }
 
@@ -698,31 +792,49 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             case RC_KEY_CONTACTS:
                 if(resultCode==RESULT_OK) {
                     final ArrayList<String> selectedContacts = data.getStringArrayListExtra("selectedContacts");
-                    Log.d(TAG,"SELECTED CONTACTS ARE: "+selectedContacts.toString());
-                    final EditText et = (EditText) new EditText(MainActivity.this);
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setTitle("Group name")
-                            .setMessage("Enter a name for your group")
-                            .setView(et)
-                            .setCancelable(true)
-                            .setPositiveButton("Next", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    String name = et.getText().toString();
-                                    if (!name.equals("")) {
-                                        createGroup(name, selectedContacts);
+                    if(fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG)!=null){
+                        EditGroupFragment frag = (EditGroupFragment) fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG);
+                        frag.membersAdded(selectedContacts);
+                    }else{
+                        final EditText et = (EditText) new EditText(MainActivity.this);
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle("Group name")
+                                .setMessage("Enter a name for your group")
+                                .setView(et)
+                                .setCancelable(true)
+                                .setPositiveButton("Next", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        String name = et.getText().toString();
+                                        if (!name.equals("")) {
+                                            createGroup(name, selectedContacts);
+                                        }
                                     }
-                                }
-                            })
-                            .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.cancel();
-                                }
-                            })
-                            .show();
+                                })
+                                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+                                    }
+                                })
+                                .show();
+                    }
                 }
 
+                break;
+            case RC_CHECK_SETTINGS:
+                switch (resultCode) {
+                    case RESULT_OK:
+                        // All required changes were successfully made
+                        if(mBound)
+                            mService.enableLocation();
+                        break;
+                    case RESULT_CANCELED:
+                        locationFab.performClick();
+                        break;
+                    default:
+                        break;
+                }
                 break;
         }
     }
@@ -769,7 +881,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         View count = menu.findItem(R.id.action_notifications).getActionView();
         notifications = (Button) count.findViewById(R.id.notif);
         if(mBound)
-            notifications.setText(mService.registerClient(MainActivity.this));
+            notifications.setText(mService.registerClient(MainActivity.this)+"");
         notifications.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -925,11 +1037,6 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         int aux = Integer.parseInt(notifications.getText().toString());
         aux--;
         notifications.setText(String.valueOf(aux));
-
-        Notifications_fragment existFragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
-        if (existFragment != null){
-            existFragment.onResume();
-        }
     }
 
     @Override
@@ -964,6 +1071,33 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         return myFilteredGroups;
     }
 
+    @Override
+    public ArrayList<String> getGroups(){
+        return myActiveGroups;
+    }
+
+    @Override
+    public void groupSelected(String groupId){
+        Fragment editGroupFragment = EditGroupFragment.newInstance(groupId,mUser.getUid());
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.replace(R.id.map_fragment_content, editGroupFragment,EDIT_GROUP_FRAGMENT_TAG);
+        fragmentTransaction.addToBackStack(null);
+        fragmentTransaction.commit();
+    }
+
+    @Override
+    public void addGroupMember(){
+        checkPermissions();
+    }
+
+    @Override
+    public void removeMember(String id){
+        EditGroupFragment frag = (EditGroupFragment) fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG);
+        if(frag!=null){
+            frag.removeMember(id);
+        }
+    }
+
     /******************************* GOOGLE MAPS/LOCATION CALLBACKS ****************************/
 
     @Override
@@ -990,12 +1124,34 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
     @Override
     public void onMapLoaded() {
+        mGoogleMap.setOnMapLongClickListener(this);
         mapLoaded = true;
+        autoZoomFab.setEnabled(true);
+    }
+
+    @Override
+    public void onMapLongClick(LatLng point){
+        locationChanged(new Location(point.latitude,point.longitude,0),mUser.getUid(),mProfile.getNick(),"");
+        Toast.makeText(MainActivity.this,"lat: "+point.latitude+" lng: "+point.longitude,Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onLocationChanged(Location location, String userId){
-        locationChanged(location,userId,mProfile.getNick(),"");
+        if(mProfile != null)
+            locationChanged(location,userId,mProfile.getNick(),"");
+    }
+
+    @Override
+    public void startResolution(Status status){
+        try {
+            // Show the dialog by calling startResolutionForResult(),
+            // and check the result in onActivityResult().
+            status.startResolutionForResult(
+                    MainActivity.this,
+                    RC_CHECK_SETTINGS);
+        } catch (IntentSender.SendIntentException e) {
+            // Ignore the error.
+        }
     }
 
 }

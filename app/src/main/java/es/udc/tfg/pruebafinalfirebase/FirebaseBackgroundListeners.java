@@ -5,6 +5,7 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.*;
@@ -24,15 +25,24 @@ import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResult;
+import com.google.android.gms.location.LocationSettingsStates;
+import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.MutableData;
+import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
@@ -40,6 +50,9 @@ import java.util.ArrayList;
 public class FirebaseBackgroundListeners extends Service implements LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
 
     private String TAG = "MYSERVICE";
+    public static final int RC_CHECK_SETTINGS = 33333;
+    public static final int LOCATION_ENABLED_NOTIF = 1111;
+    public static final int REQUEST_RECEIVED_NOTIF = 2222;
     private boolean running = false;
     private boolean bound = false;
     private boolean locationEnabled = false;
@@ -48,6 +61,8 @@ public class FirebaseBackgroundListeners extends Service implements LocationList
     private final IBinder mBinder = (IBinder) new LocalBinder();
     private OnServiceInteractionListener mListener;
     private SharedPreferences pref;
+    private NotificationManager mNotifyMgr;
+    private User mUser;
 
     private DatabaseReference ref;
     private ChildEventListener listener;
@@ -78,6 +93,7 @@ public class FirebaseBackgroundListeners extends Service implements LocationList
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "onUnBind");
         bound = false;
+
         return super.onUnbind(intent);
     }
 
@@ -88,6 +104,9 @@ public class FirebaseBackgroundListeners extends Service implements LocationList
         running = true;
         pendingRequests = new ArrayList<>();
         mAuth = FirebaseAuth.getInstance();
+
+        pref = getSharedPreferences(TAG, Context.MODE_PRIVATE);
+        mNotifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
         mGoogleLocateApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -107,18 +126,39 @@ public class FirebaseBackgroundListeners extends Service implements LocationList
                     listener = new ChildEventListener() {
                         @Override
                         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                            Request request = dataSnapshot.getValue(Request.class);
-                            Log.d(TAG, "adding request " + dataSnapshot);
-                            pendingRequests.add(request);
-                            if (bound && mListener != null)
-                                mListener.onRequestReceived(request.getId());
-                            NotificationCompat.Builder mBuilder =
-                                    new NotificationCompat.Builder(getApplicationContext())
-                                            .setSmallIcon(android.R.drawable.ic_menu_share)
-                                            .setContentTitle("My notification")
-                                            .setContentText("new request " + dataSnapshot.getValue().toString());
-                            NotificationManager mNotifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                            mNotifyMgr.notify(1, mBuilder.build());
+                            final Request request = dataSnapshot.getValue(Request.class);
+
+                            if(request.getType()==Request.REQUEST_TYPE_GROUP){
+                                pendingRequests.add(request);
+                                if (bound && mListener != null)
+                                    mListener.onRequestReceived(request.getId());
+                                NotificationCompat.Builder mBuilder =
+                                        new NotificationCompat.Builder(getApplicationContext())
+                                                .setSmallIcon(android.R.drawable.ic_menu_share)
+                                                .setContentTitle("My notification")
+                                                .setContentText("new request " + dataSnapshot.getValue().toString());
+                                NotificationManager mNotifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                                mNotifyMgr.notify(REQUEST_RECEIVED_NOTIF, mBuilder.build());
+
+                            }else if(request.getType()==Request.REQUEST_TYPE_DELETED){
+                                FirebaseDatabase.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid()).runTransaction(new Transaction.Handler() {
+                                    @Override
+                                    public Transaction.Result doTransaction(MutableData mutableData) {
+                                        User user = mutableData.getValue(User.class);
+                                        if (user == null)
+                                            return Transaction.success(mutableData);
+                                        user.removeGroup(request.getIdGroup());
+                                        mutableData.setValue(user);
+                                        return Transaction.success(mutableData);
+                                    }
+
+                                    @Override
+                                    public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
+
+                                    }
+                                });
+                            }
+
                         }
 
                         @Override
@@ -148,6 +188,8 @@ public class FirebaseBackgroundListeners extends Service implements LocationList
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             User user = dataSnapshot.getValue(User.class);
+                            if(user!=null)
+                                mUser = user;
                             ref = FirebaseDatabase.getInstance().getReference().child("requests").child(user.getEmail() + user.getPhoneNumber() + user.getKey());
                             Log.d(TAG, "ref to listen: " + ref.toString() + " LISTENER: " + listener.toString());
                             ref.addChildEventListener(listener);
@@ -186,23 +228,75 @@ public class FirebaseBackgroundListeners extends Service implements LocationList
     }
 
     public int registerClient(Context context) {
+        Log.d(TAG,"onBind");
         mListener = (OnServiceInteractionListener) context;
+        bound=true;
+
+        mNotifyMgr.cancel(LOCATION_ENABLED_NOTIF);
+
         return pendingRequests.size();
     }
 
+    public void disconnectService(){
+        Log.d(TAG,"onUnBind");
+
+        if(pref.getBoolean("locationEnabled",false)) {
+            NotificationCompat.Builder locEnabledNotifBuilder =
+                    new NotificationCompat.Builder(getApplicationContext())
+                            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                            .setContentTitle("Location")
+                            .setContentText("You are sharing your location in background");
+            mNotifyMgr.notify(LOCATION_ENABLED_NOTIF, locEnabledNotifBuilder.build());
+        }
+
+        bound=false;
+    }
+
     public boolean enableLocation() {
-        LocationRequest mLocationRequest = new LocationRequest();
+
+        final LocationRequest mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(10000);
         mLocationRequest.setFastestInterval(5000);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_LOW_POWER);
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return false;
-        }
-        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleLocateApiClient, mLocationRequest, this);
-        SharedPreferences.Editor editor = pref.edit();
-        editor.putBoolean("locationEnabled",true);
-        editor.commit();
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(mLocationRequest);
+        PendingResult<LocationSettingsResult> result = LocationServices.SettingsApi.checkLocationSettings(mGoogleLocateApiClient, builder.build());
+        result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
+            @Override
+            public void onResult(LocationSettingsResult result) {
+                final Status status = result.getStatus();
+                final LocationSettingsStates settingsStates = result.getLocationSettingsStates();
+                switch (status.getStatusCode()) {
+                    case LocationSettingsStatusCodes.SUCCESS:
+                        // All location settings are satisfied. The client can
+                        // initialize location requests here.
+                        if (ActivityCompat.checkSelfPermission(FirebaseBackgroundListeners.this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(FirebaseBackgroundListeners.this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                            return;
+                        }
+
+                        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleLocateApiClient, mLocationRequest, FirebaseBackgroundListeners.this);
+                        SharedPreferences.Editor editor = pref.edit();
+                        editor.putBoolean("locationEnabled",true);
+                        editor.commit();
+
+                        break;
+                    case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                        // Location settings are not satisfied, but this can be fixed
+                        // by showing the user a dialog.
+                        // Show the dialog by calling startResolutionForResult(),
+                        // and check the result in onActivityResult().
+                        if (bound)
+                            mListener.startResolution(status);
+                        break;
+                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                        // Location settings are not satisfied. However, we have no way
+                        // to fix the settings so we won't show the dialog.
+
+                        break;
+                }
+            }
+        });
+
         return true;
     }
 
@@ -218,14 +312,13 @@ public class FirebaseBackgroundListeners extends Service implements LocationList
         public void onRequestReceived(String requestId);
         public void onRequestRemoved();
         public void onLocationChanged(es.udc.tfg.pruebafinalfirebase.Location location, String userId);
+        public void startResolution(Status status);
     }
 
     /*************************** GOOGLE LOCATION METHODS *********************************/
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-
-        pref = getSharedPreferences(TAG, Context.MODE_PRIVATE);
         Log.d(TAG,"AAKSDLJFLSKA    LOCATION ENABLED: "+pref.getBoolean("locationEnabled",false));
         if(pref.getBoolean("locationEnabled",false))
             enableLocation();
@@ -236,18 +329,19 @@ public class FirebaseBackgroundListeners extends Service implements LocationList
 
     @Override
     public void onConnectionSuspended(int i) {
-
+        Log.d(TAG,"connection suspended: "+i);
     }
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
+        Log.d(TAG,"connection failed: "+connectionResult);
     }
 
     @Override
     public void onLocationChanged(Location location) {
         es.udc.tfg.pruebafinalfirebase.Location myLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getLatitude(),location.getLongitude(),location.getAccuracy());
         FirebaseDatabase.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid()).child("location").setValue(myLocation);
-        mListener.onLocationChanged(myLocation,mAuth.getCurrentUser().getUid());
+        if(bound)
+            mListener.onLocationChanged(myLocation,mAuth.getCurrentUser().getUid());
     }
 }

@@ -77,6 +77,26 @@
             android:elevation="15dp"
             android:visibility="invisible"
             android:src="@android:drawable/ic_menu_mylocation" />
+
+        <View
+            android:id="@+id/dummy"
+            android:layout_width="1dp"
+            android:layout_height="16dp"
+            android:layout_gravity="top|end"
+            app:layout_anchor="@id/location_fab"
+            app:layout_anchorGravity="top" />
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/auto_view_fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:elevation="15dp"
+            app:layout_anchor="@id/dummy"
+            app:layout_anchorGravity="top"
+            app:backgroundTint="@android:color/white"
+            android:src="@drawable/ic_auto_zoom"
+            android:visibility="invisible"/>
     </android.support.design.widget.CoordinatorLayout>
 
     <android.support.design.widget.NavigationView
