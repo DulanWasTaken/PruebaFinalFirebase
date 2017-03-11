@@ -3,7 +3,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="es.udc.tfg.pruebafinalfirebase.EditGroupFragment.EditGroupFragment">
+    tools:context="es.udc.tfg.pruebafinalfirebase.Group.EditGroupFragment">
 
     <ScrollView
         android:layout_width="match_parent"

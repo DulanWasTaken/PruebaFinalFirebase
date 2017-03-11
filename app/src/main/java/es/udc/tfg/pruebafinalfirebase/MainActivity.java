@@ -11,6 +11,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
@@ -29,7 +30,6 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
-import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -41,6 +41,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
+import android.text.InputType;
 
 import com.google.android.gms.appinvite.AppInvite;
 import com.google.android.gms.auth.api.Auth;
@@ -59,37 +60,22 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.auth.GoogleAuthProvider;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.GenericTypeIndicator;
-import com.google.firebase.database.MutableData;
-import com.google.firebase.database.Transaction;
-import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
-import es.udc.tfg.pruebafinalfirebase.EditGroupFragment.EditGroupFragment;
-import es.udc.tfg.pruebafinalfirebase.EditGroupFragment.GroupMemberRecyclerViewAdapter;
-import es.udc.tfg.pruebafinalfirebase.EditGroupFragment.GroupsRecyclerViewAdapter;
-import es.udc.tfg.pruebafinalfirebase.EditGroupFragment.Groups_fragment;
-import es.udc.tfg.pruebafinalfirebase.filterFragment.FilterRecyclerViewAdapter;
-import es.udc.tfg.pruebafinalfirebase.filterFragment.Filter_fragment;
+import es.udc.tfg.pruebafinalfirebase.Group.EditGroupFragment;
+import es.udc.tfg.pruebafinalfirebase.Group.Group;
+import es.udc.tfg.pruebafinalfirebase.Group.GroupsRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.Group.Groups_fragment;
+import es.udc.tfg.pruebafinalfirebase.Messages.Message;
+import es.udc.tfg.pruebafinalfirebase.Messages.MessagesFragment;
+import es.udc.tfg.pruebafinalfirebase.Filter.FilterRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.Filter.Filter_fragment;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
-import es.udc.tfg.pruebafinalfirebase.notificationsFragment.NotifRecyclerViewAdapter;
-import es.udc.tfg.pruebafinalfirebase.notificationsFragment.Notifications_fragment;
+import es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment;
+import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
-public class MainActivity extends AppCompatActivity implements GroupMemberRecyclerViewAdapter.OnGroupMemberAdapterInteractionListener,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback,FirebaseBackgroundListeners.OnServiceInteractionListener,Notifications_fragment.OnNotifFragmentInteractionListener,NotifRecyclerViewAdapter.OnNotifAdapterInteractionListener {
+public class MainActivity extends AppCompatActivity implements DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback,FirebaseBackgroundListeners.OnServiceInteractionListener {
 
     private String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -97,6 +83,8 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
     public static final String GROUPS_FRAGMENT_TAG = "GROUPS_FRAGMENT_TAG";
     public static final String FILTER_FRAGMENT_TAG = "FILTER_FRAGMENT_TAG";
     public static final String EDIT_GROUP_FRAGMENT_TAG = "EDIT_GROUP_FRAGMENT_TAG";
+    public static final String MESSAGES_FRAGMENT_TAG = "MESSAGES_FRAGMENT_TAG";
+    public static final String SETTINGS_FRAGMENT_TAG = "SETTINGS_FRAGMENT_TAG";
     public static final int RC_SIGN_IN = 777;
     public static final int RC_PHONE_CONTACTS = 888;
     public static final int RC_EMAIL_CONTACTS = 999;
@@ -104,14 +92,14 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
     public static final int RC_CHECK_SETTINGS = 666;
     public static final int PERMISSION_REQUEST_READ_CONTACTS = 333;
     public static final int PERMISSION_REQUEST_LOCATION = 222;
-    public boolean initListenersFinished = false;
     public boolean myLocationEnabled = false;
     public boolean mapLoaded=false;
     public boolean myProfileCreated = false;
+    public boolean myServiceRunning = false;
 
-    public ArrayList<String> myActiveGroups = new ArrayList<>();
-    public ArrayList<String> myFilteredGroups = new ArrayList<>();
-    public HashMap<String,Marker> markersHM = new HashMap<String,Marker>();
+    /*public ArrayList<String> myFilteredGroups = new ArrayList<>();
+    public HashMap<String,Marker> markersHM = new HashMap<String,Marker>();*/
+    private ArrayList<MapMarker> mapMarkers = new ArrayList<>();
 
     private RelativeLayout main_content;
     private FloatingActionButton locationFab,autoZoomFab;
@@ -134,19 +122,7 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
     private GoogleSignInOptions gso;
     private GoogleMap mGoogleMap;
 
-    private FirebaseAuth mAuth;
-    private FirebaseUser mUser;
-    private User mProfile;
-    private FirebaseAuth.AuthStateListener mAuthListener;
-    private FirebaseDatabase database;
-    public DatabaseReference myProfileRef;
-    public DatabaseReference myRequestsRef;
-    public DatabaseReference publicIdsRef;
-    public DatabaseReference groupsRef;
-    private ValueEventListener nameGroupListener;
-    private ValueEventListener stateGroupListener;
-    private ChildEventListener membersGroupListener;
-    private ValueEventListener locationValueListener;
+    private DBManager dbManager = DBManager.getInstance();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -158,7 +134,7 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
         pb.getWindow().setBackgroundDrawableResource(R.color.transparent);
         pb.setContentView(view);
         pb.setCancelable(false);
-        pb.show();
+        //pb.show();
         /************************ INICILIZAR GOOGLE API ********************************/
         gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
@@ -176,31 +152,27 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
                 .addApi(AppInvite.API)
                 .build();
 
-        /*********************** INICILIZAR LAS VARIABLES FIREBASE **************************/
-        database = FirebaseDatabase.getInstance();
-        mAuth = FirebaseAuth.getInstance();
-        publicIdsRef = database.getReference().child("publicIds");
-        groupsRef = database.getReference().child("groups");
-        /************************** INICIALIZAR OTRAS VARIABLES ***************************/
+
+        /************************** INICIALIZAR VARIABLES ***************************/
         fragmentManager = getSupportFragmentManager();
         pref = getSharedPreferences("MYSERVICE", Context.MODE_PRIVATE);
-        myLocationEnabled = pref.getBoolean("locationEnabled",false);
-        myProfileCreated = pref.getBoolean("profileCreated",false);
+        //myLocationEnabled = pref.getBoolean("locationEnabled",false);
+        //myProfileCreated = pref.getBoolean("profileCreated",false);
+        myServiceRunning = pref.getBoolean("serviceRunning",false);
+
+
 
         mConnection = new ServiceConnection() {
 
             @Override
             public void onServiceConnected(ComponentName className, IBinder service) {
-                // We've bound to LocalService, cast the IBinder and get LocalService instance
                 FirebaseBackgroundListeners.LocalBinder binder = (FirebaseBackgroundListeners.LocalBinder) service;
                 mService = binder.getService();
                 mBound = true;
-                if(notifications!=null)
-                    notifications.setText(mService.registerClient(MainActivity.this)+"");
+                mService.registerClient(MainActivity.this);
 
                 locationFab.setEnabled(true);
-                if(mBound && initListenersFinished)
-                    enableButtons();
+                initView();
             }
 
             @Override
@@ -216,7 +188,6 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         ab = getSupportActionBar();
-        ab.setTitle("W'U");
 
         locationFab = (FloatingActionButton) findViewById(R.id.location_fab);
         autoZoomFab = (FloatingActionButton) findViewById(R.id.auto_view_fab);
@@ -232,38 +203,15 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
                 menuItem.setChecked(true);
                 mDrawerLayout.closeDrawers();
 
-                SupportMapFragment mapFragment = (SupportMapFragment)fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG);
                 switch (menuItem.getItemId()){
                     case R.id.drawer_map:
-                        setMapFragmentActionBar();
-                        if(fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG)==null){
-                            SupportMapFragment mMapFragment = SupportMapFragment.newInstance();
-                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                            fragmentTransaction.replace(R.id.map_fragment_content, mMapFragment,MAP_FRAGMENT_TAG);
-                            fragmentTransaction.commit();
-                            mMapFragment.getMapAsync(MainActivity.this);
-
-                            Toast.makeText(MainActivity.this,"Map Fragment",Toast.LENGTH_SHORT).show();
-                        }else if(fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG)!=null){
-                            Fragment groupFrag = fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG);
-                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                            fragmentTransaction.remove(groupFrag);
-                            fragmentTransaction.commit();
-                        }
-                        mapFragment.getView().setVisibility(View.VISIBLE);
+                        setMapFragment();
                         break;
                     case R.id.drawer_groups:
-                        setGroupsFragmentActionBar();
-                        if(fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG)==null){
-                            mapFragment.getView().setVisibility(View.GONE);
-                            Fragment groupFrag = new Groups_fragment();
-                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                            fragmentTransaction.add(R.id.map_fragment_content, groupFrag,GROUPS_FRAGMENT_TAG);
-                            fragmentTransaction.addToBackStack(null);
-                            fragmentTransaction.commit();
-
-                            Toast.makeText(MainActivity.this,"Group Fragment",Toast.LENGTH_SHORT).show();
-                        }
+                        setGroupsFragment();
+                        break;
+                    case R.id.drawer_settings:
+                        setSettingsFragment();
                         break;
                 }
                 return true;
@@ -294,8 +242,8 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
             public void onClick(View v) {
                 boolean empty = true;
                 LatLngBounds.Builder builder = new LatLngBounds.Builder();
-                for (HashMap.Entry<String, Marker> pair : markersHM.entrySet()) {
-                    Marker marker = (Marker) pair.getValue();
+                for (MapMarker m : mapMarkers){
+                    final Marker marker = m.getMarker();
                     if (marker.isVisible()) {
                         empty=false;
                         builder.include(marker.getPosition());
@@ -310,76 +258,14 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
         });
 
         /***********************  COMPROBAR ESTADO DE AUTENTICACIÓN **************************/
-        mAuthListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                mAuth = firebaseAuth;
-                mUser = mAuth.getCurrentUser();
-                if(mUser!=null){
-                    if(menuItemLog !=null)
-                        menuItemLog.setTitle("Sign out");
-                    myProfileRef = database.getReference().child("users").child(mUser.getUid());
-                    //CHECK IF THE PROFILE ALREADY EXISTS IN DB
-                    final ValueEventListener profileListener = new ValueEventListener() {
-                        @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
-                            if(!dataSnapshot.exists()){
-                                //ASK FOR PHONE NUMBER AND NICK
-                                final LinearLayout ll = new LinearLayout(MainActivity.this);
-                                ll.setOrientation(LinearLayout.VERTICAL);
-                                final EditText et = new EditText(MainActivity.this);
-                                final EditText et2 = new EditText(MainActivity.this);
-                                et.setHint("Phone number");
-                                et2.setHint("Nick");
-                                et.setInputType(InputType.TYPE_CLASS_NUMBER);
-                                ll.addView(et);
-                                ll.addView(et2);
-                                new AlertDialog.Builder(MainActivity.this)
-                                        .setTitle("Phone Number & Nick")
-                                        .setView(ll)
-                                        .setCancelable(false)
-                                        .setPositiveButton("Next", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-                                                String phoneNumber = et.getText().toString();
-                                                String nick = et2.getText().toString();
-                                                if (!phoneNumber.equals("")&&!nick.equals("")){
-                                                    createProfile(phoneNumber,nick);
-                                                }
-                                            }
-                                        })
-                                        .show();
-                            }else{
-                                myProfileCreated = true;
-                                pref.edit().putBoolean("profileCreated",true).commit();
-                                mProfile=dataSnapshot.getValue(User.class);
-                                initListeners();
-                                myProfileRef.removeEventListener(this);
-                            }
-                        }
-
-                        @Override
-                        public void onCancelled(DatabaseError databaseError) {
-                            Log.d(TAG,"Ref: "+myProfileRef.toString()+"  database error: "+databaseError);
-                        }
-                    };
-                    myProfileRef.addValueEventListener(profileListener);
-                } else{
-                    disableButtons();
-                    if(menuItemLog !=null)
-                        menuItemLog.setTitle("Sign in");
-                }
-
-            }
-        };
-        mAuth.addAuthStateListener(mAuthListener);
-
+        if(!myServiceRunning)
+            startService(new Intent(MainActivity.this,FirebaseBackgroundListeners.class));
+        dbManager.bindDBManager(MainActivity.this);
     }
 
     @Override
     protected void onStart(){
         super.onStart();
-        Log.d(TAG,myProfileCreated+" adksñlfjasñklfjña");
         if (myProfileCreated) {
             Intent intent = new Intent(this, FirebaseBackgroundListeners.class);
             bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
@@ -389,13 +275,41 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
     @Override
     protected void onStop() {
         super.onStop();
-        mService.disconnectService();
+        if(mService!=null)
+            mService.disconnectService();
         if(mBound)
             unbindService(mConnection);
         mBound=false;
     }
 
-    private void enableButtons(){
+    private void initView(){
+        if(dbManager.isAuthenticated()){
+            setMapFragment();
+        }else{
+            setLoginFragment();
+        }
+    }
+
+    private void setLoginFragment(){
+        if (menu != null){
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
+            menuItemFilter.setVisible(false);
+            menuItemLog.setTitle("Sign in");
+        }
+
+        locationFab.setVisibility(View.INVISIBLE);
+        autoZoomFab.setVisibility(View.INVISIBLE);
+
+        ab.setDisplayHomeAsUpEnabled(false);
+
+        Fragment fragment  = fragmentManager.findFragmentById(R.id.map_fragment_content);
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.remove(fragment);
+        fragmentTransaction.commit();
+    }
+
+    private void setMapFragment(){
         if (menu != null){
             menuItemLog.setEnabled(true);
             menuItemShare.setEnabled(true);
@@ -403,43 +317,27 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
             menuItemShare.setVisible(true);
             menuItemNotif.setVisible(true);
             menuItemFilter.setVisible(true);
+            menuItemLog.setTitle("Sign out");
         }
         locationFab.setVisibility(View.VISIBLE);
         autoZoomFab.setVisibility(View.VISIBLE);
 
         ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
         ab.setDisplayHomeAsUpEnabled(true);
+        ab.setTitle("W'U");
 
-        SupportMapFragment mMapFragment = SupportMapFragment.newInstance();
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        fragmentTransaction.replace(R.id.map_fragment_content, mMapFragment,MAP_FRAGMENT_TAG);
-        fragmentTransaction.commit();
-        mMapFragment.getMapAsync(MainActivity.this);
-
-        pb.cancel();
-    }
-
-    private void disableButtons(){
-        if (menu != null) {
-            menuItemLog.setEnabled(true);
-            menuItemNotif.setVisible(false);
-            menuItemShare.setVisible(false);
-            menuItemFilter.setVisible(false);
-        }
-        locationFab.setVisibility(View.INVISIBLE);
-        autoZoomFab.setVisibility(View.INVISIBLE);
-        ab.setDisplayHomeAsUpEnabled(false);
-        SupportMapFragment map = (SupportMapFragment) fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG);
-        if(map!=null) {
+        if(fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG)==null) {
+            SupportMapFragment mMapFragment = SupportMapFragment.newInstance();
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-            fragmentTransaction.remove(map);
+            fragmentTransaction.replace(R.id.map_fragment_content, mMapFragment, MAP_FRAGMENT_TAG);
             fragmentTransaction.commit();
-            fragmentManager.executePendingTransactions();
+            mMapFragment.getMapAsync(MainActivity.this);
         }
+
         pb.cancel();
     }
 
-    private void setGroupsFragmentActionBar(){
+    private void setGroupsFragment(){
         if (menu != null){
             menuItemLog.setEnabled(true);
             menuItemShare.setEnabled(true);
@@ -450,25 +348,101 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
         }
         locationFab.setVisibility(View.GONE);
         autoZoomFab.setVisibility(View.GONE);
+
+        ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
+        ab.setDisplayHomeAsUpEnabled(true);
+        ab.setTitle("Groups");
+
+        if(fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG)==null) {
+            Groups_fragment groupsFragment = new Groups_fragment();
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            fragmentTransaction.replace(R.id.map_fragment_content, groupsFragment, GROUPS_FRAGMENT_TAG);
+            Fragment filter = fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
+            if(filter!=null)
+                fragmentTransaction.remove(filter);
+            fragmentTransaction.commit();
+        }
+
+        pb.cancel();
     }
 
-    private void setMapFragmentActionBar(){
+    private void setEditGroupFragment(String groupId){
         if (menu != null){
-            menuItemLog.setEnabled(true);
-            menuItemShare.setEnabled(true);
-            menuItemNotif.setEnabled(true);
-            menuItemShare.setVisible(true);
-            menuItemNotif.setVisible(true);
-            menuItemFilter.setVisible(true);
+            menuItemLog.setEnabled(false);
+            menuItemShare.setEnabled(false);
+            menuItemNotif.setEnabled(false);
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
+            menuItemFilter.setVisible(false);
+            menuItemLog.setTitle("Sign out");
         }
-        locationFab.setVisibility(View.VISIBLE);
-        autoZoomFab.setVisibility(View.VISIBLE);
+        locationFab.setVisibility(View.INVISIBLE);
+        autoZoomFab.setVisibility(View.INVISIBLE);
+
+        ab.setDisplayHomeAsUpEnabled(false);
+
+        EditGroupFragment editGroupFragment = EditGroupFragment.newInstance(groupId);
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.replace(R.id.map_fragment_content, editGroupFragment, EDIT_GROUP_FRAGMENT_TAG+groupId);
+        fragmentTransaction.addToBackStack(null);
+        fragmentTransaction.commit();
+
+        pb.cancel();
     }
+
+    private void setMessagesFragment(String groupId){
+        if (menu != null){
+            menuItemLog.setEnabled(false);
+            menuItemShare.setEnabled(false);
+            menuItemNotif.setEnabled(false);
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
+            menuItemFilter.setVisible(false);
+            menuItemLog.setTitle("Sign out");
+        }
+        locationFab.setVisibility(View.INVISIBLE);
+        autoZoomFab.setVisibility(View.INVISIBLE);
+
+        ab.setDisplayHomeAsUpEnabled(false);
+
+        MessagesFragment messagesFragment = MessagesFragment.newInstance(groupId);
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.replace(R.id.map_fragment_content, messagesFragment, MESSAGES_FRAGMENT_TAG+groupId);
+        fragmentTransaction.addToBackStack(null);
+        fragmentTransaction.commit();
+
+        pb.cancel();
+    }
+
+    private void setSettingsFragment(){
+        if (menu != null){
+            menuItemLog.setEnabled(false);
+            menuItemShare.setEnabled(false);
+            menuItemNotif.setEnabled(false);
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
+            menuItemFilter.setVisible(false);
+            menuItemLog.setTitle("Sign out");
+        }
+        locationFab.setVisibility(View.INVISIBLE);
+        autoZoomFab.setVisibility(View.INVISIBLE);
+
+        ab.setDisplayHomeAsUpEnabled(false);
+
+        SettingsFragment settingsFragment = new SettingsFragment();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.replace(R.id.map_fragment_content, settingsFragment, SETTINGS_FRAGMENT_TAG);
+        fragmentTransaction.addToBackStack(null);
+        fragmentTransaction.commit();
+
+        pb.cancel();
+    }
+
 
     private void logout(){
-        pb.show();
+        //pb.show();
         Log.d(TAG,"logout");
-        mAuth.signOut();
+        dbManager.signOut();
         Auth.GoogleSignInApi.signOut(mGoogleAuthApiClient).setResultCallback(
                 new ResultCallback<Status>() {
                     @Override
@@ -478,141 +452,8 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
                 });
     }
     private void login(){
-        pb.show();
         Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleAuthApiClient);
         startActivityForResult(signInIntent,RC_SIGN_IN);
-    }
-
-    private void createProfile(String phoneNumber, String nick){
-        String email = Utils.generateValidEmail(mUser.getEmail());
-        String requestsId = email+phoneNumber+"";
-        database.getReference().child("publicIds").child(email).setValue(requestsId);
-        database.getReference().child("publicIds").child(phoneNumber).setValue(requestsId);
-
-        //database.getReference().child("publicIds").child(mProfile.getKey()).setValue(requestsId);
-
-        User mProfile = new User(email,"",mUser.getUid(),phoneNumber,nick,new Location(),new ArrayList<InterestPoint>(),"",new ArrayList<String>(),requestsId);
-        myProfileRef.setValue(mProfile);
-    }
-
-    private void initListeners(){
-        Log.d(TAG,"init listeners");
-        startService(new Intent(MainActivity.this,FirebaseBackgroundListeners.class));
-
-        myRequestsRef = database.getReference().child("requests").child(mProfile.getEmail()+mProfile.getPhoneNumber());
-
-        myProfileRef.child("groupsId").addChildEventListener(new ChildEventListener() {
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                String groupId = dataSnapshot.getValue(String.class);
-                initGroupListeners(dataSnapshot.getValue(String.class));
-            }
-
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-                String groupId = dataSnapshot.getValue(String.class);
-                groupsRef.child(groupId).child("name").removeEventListener(nameGroupListener);
-                groupsRef.child(groupId).child("state").removeEventListener(stateGroupListener);
-                groupsRef.child(groupId).child("membersId").removeEventListener(membersGroupListener);
-            }
-
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-
-        Intent intent = new Intent(this, FirebaseBackgroundListeners.class);
-        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
-
-        initListenersFinished = true;
-        if(mBound && initListenersFinished)
-            enableButtons();
-    }
-
-    private void initGroupListeners(final String groupId){
-        nameGroupListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                groupNameChanged(dataSnapshot.getValue(String.class),groupId);
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        };
-        stateGroupListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                stateGroupChanged(dataSnapshot.getValue(int.class),groupId);
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        };
-        membersGroupListener = new ChildEventListener() {
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                final GroupMember member = dataSnapshot.getValue(GroupMember.class);
-                locationValueListener = new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        locationChanged(dataSnapshot.getValue(Location.class),member.getMemberId(),member.getNick(),groupId);
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-
-                    }
-                };
-                if(member.getState()==Group.GROUP_STATE_ACTIVE)
-                    myProfileRef.getParent().child(member.getMemberId()).child("location").addValueEventListener(locationValueListener);
-
-            }
-
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-                final GroupMember member = dataSnapshot.getValue(GroupMember.class);
-                if(member.getState()==Group.GROUP_STATE_ACTIVE)
-                    myProfileRef.getParent().child(member.getMemberId()).child("location").addValueEventListener(locationValueListener);
-                else if(member.getState()==Group.GROUP_STATE_STOPPED){
-                    myProfileRef.getParent().child(member.getMemberId()).child("location").removeEventListener(locationValueListener);
-                }
-            }
-
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-                final GroupMember member = dataSnapshot.getValue(GroupMember.class);
-                myProfileRef.getParent().child(member.getMemberId()).child("location").removeEventListener(locationValueListener);
-            }
-
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        };
-
-        groupsRef.child(groupId).child("name").addValueEventListener(nameGroupListener);
-        groupsRef.child(groupId).child("state").addValueEventListener(stateGroupListener);
-        groupsRef.child(groupId).child("membersId").addChildEventListener(membersGroupListener);
     }
 
     private void checkPermissions(){
@@ -656,117 +497,254 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
         }
     }
 
-    /***************************** HANDLE BD CHANGES METHODS *****************************/
-
-    private void createGroup(String name, ArrayList<String> selectedContacts){
-
-        ArrayList<GroupMember> members = new ArrayList<>();
-        members.add(new GroupMember(Group.GROUP_STATE_ACTIVE,mUser.getUid(),mProfile.getNick()));
-        final String groupId = mUser.getUid()+System.currentTimeMillis();
-        groupsRef.child(groupId).setValue(new Group(name,members));
-        myProfileRef.child("groupsId").addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                GenericTypeIndicator<ArrayList<String>> t = new GenericTypeIndicator<ArrayList<String>>() {};
-                ArrayList<String> groups = dataSnapshot.getValue(t);
-                if (groups == null)
-                    groups = new ArrayList<String>();
-                Log.d(TAG,"datasnapshot: "+dataSnapshot+" groups: "+groups);
-                groups.add(groupId);
-                myProfileRef.child("groupsId").setValue(groups);
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-
-        for (String contact: selectedContacts){
-            ValueEventListener listener;
-            Log.d(TAG, ""+contact);
-            listener = new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    DatabaseReference requestRef = myRequestsRef.getParent().child(dataSnapshot.getValue(String.class)).push();
-                    String id = requestRef.getKey();
-                    requestRef.setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP,id));
-                }
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-                    Log.d(TAG,"Cancelled: publicIds "+databaseError);
-                }
-            };
-            publicIdsRef.child(contact).addListenerForSingleValueEvent(listener);
-        }
-
-    }
-
-    private void groupNameChanged(String name, String groupId){
-    }
-
-    private void stateGroupChanged(int state,String groupId){
-        Log.d(TAG,"STATE CHANGED TO: "+state+" OF GROUP: "+groupId);
-        switch (state){
-            case Group.GROUP_STATE_ACTIVE:
-                if(!myActiveGroups.contains(groupId)){
-                    myActiveGroups.add(groupId);
-                    myFilteredGroups.add(groupId);
-                }
-                break;
-            case Group.GROUP_STATE_STOPPED:
-                if(myActiveGroups.contains(groupId)){
-                    myActiveGroups.remove(groupId);
-                    myFilteredGroups.remove(groupId);
-                }
-                break;
-        }
-        FragmentTransaction transaction = fragmentManager.beginTransaction();
-        Filter_fragment existFragment = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
-        if (existFragment != null){
-            existFragment.onResume();
-        }
-    }
-
     private void locationChanged(Location location, String userId,String nick, String groupId){
         Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+userId+"       "+groupId);
+        Fragment mapFragment = fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG);
 
-        if(mapLoaded && mGoogleMap!=null){
-            if(!markersHM.containsKey(userId+"/"+groupId)){
-                Marker marker = mGoogleMap.addMarker(new MarkerOptions()
-                    .position(new LatLng(location.getLat(),location.getLng()))
-                    .title(nick));
-                markersHM.put(userId+"/"+groupId,marker);
+        final MarkerOptions options = new MarkerOptions()
+                .position(new LatLng(location.getLat(), location.getLng()))
+                .title(nick);
+        Marker marker = null;
+
+        if(mapLoaded && mGoogleMap!=null && mapFragment!=null) {
+            marker = mGoogleMap.addMarker(options);
+            marker.setVisible(DBManager.mGroups.get(groupId));
+        }
+
+        int index = findMarker(userId, groupId);
+        if (index>=0) {
+            mapMarkers.get(index).setMarkerOptions(options);
+            if(mapLoaded && mGoogleMap!=null && mapFragment!=null)
+                mapMarkers.get(index).setMarker(marker);
+        } else {
+            if(mapLoaded && mGoogleMap!=null && mapFragment!=null){
+                mapMarkers.add(new MapMarker(marker,options, userId, groupId, MapMarker.LOCATION_MARKER));
             }else{
-                Marker marker = markersHM.get(userId+"/"+groupId);
-                marker.setPosition(new LatLng(location.getLat(),location.getLng()));
+                mapMarkers.add(new MapMarker(options, userId, groupId, MapMarker.LOCATION_MARKER));
             }
 
         }
+
     }
 
+    private int findMarker(String userId, String groupId){
+        for (MapMarker marker : mapMarkers){
+            if (marker.getGroupId().equals(groupId) && marker.getUserId().equals(userId)){
+                return mapMarkers.indexOf(marker);
+            }
+        }
+        return -1;
+    }
 
-    /********************************************************************************************/
+    /************************** GROUPS RECYCLER VIEW ADAPTER METHODS ***************************/
+    @Override
+    public void groupSelected(String groupId){
+        setMessagesFragment(groupId);
+    }
 
-    private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
-        Log.d(TAG, "firebaseAuthWithGoogle:" + acct.getId());
+    @Override
+    public void groupLongClick(String groupId){
+        setEditGroupFragment(groupId);
+    }
 
-        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
-        mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        Log.d(TAG, "signInWithCredential:onComplete:" + task.isSuccessful());
+    /************************** EDIT GROUP FRAGMENT METHODS **********************************/
 
-                        if (!task.isSuccessful()) {
-                            Log.w(TAG, "signInWithCredential", task.getException());
-                            Toast.makeText(MainActivity.this, "Authentication failed.",
-                                    Toast.LENGTH_SHORT).show();
-                        }
-                        // ...
+    @Override
+    public void addGroupMember(){
+        checkPermissions();
+    }
+
+    /************************** FILTER RECYCLER VIEW METHODS *******************************/
+
+    @Override
+    public void updateFilter(){
+        for(MapMarker marker : mapMarkers){
+            Marker aux = marker.getMarker();
+            aux.setVisible(DBManager.mGroups.get(marker.getGroupId()));
+            marker.setMarker(aux);
+        }
+    }
+
+    /****************************** SERVICE METHODS *****************************************/
+
+    @Override
+    public void onMyLocationChanged(Location location){
+        locationChanged(location,dbManager.getId(),"","");
+    }
+
+    @Override
+    public void startResolution(Status status){
+        try {
+            // Show the dialog by calling startResolutionForResult(),
+            // and check the result in onActivityResult().
+            status.startResolutionForResult(
+                    MainActivity.this,
+                    RC_CHECK_SETTINGS);
+        } catch (IntentSender.SendIntentException e) {
+            // Ignore the error.
+        }
+    }
+
+    /***************************** DBMANAGER METHODS ****************************************/
+
+    @Override
+    public void signedIn() {
+        Log.d(TAG,"DBMANAGER: signed in:  "+dbManager.isAuthenticated());
+        initView();
+    }
+
+    @Override
+    public void signedOut() {
+        Log.d(TAG,"DBMANAGER: signed out");
+        initView();
+    }
+
+    @Override
+    public void groupChanged(Group group) {
+        Log.d(TAG,"DBMANAGER: group changed");
+        Filter_fragment filterFragment = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
+        Groups_fragment groupsFragment = (Groups_fragment) fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG);
+        EditGroupFragment editGroupFragment = (EditGroupFragment) fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG+group.getId());
+        if(filterFragment!=null)
+            filterFragment.updateFilter();
+        if(groupsFragment!=null)
+            groupsFragment.updateGroupList();
+        if(editGroupFragment != null)
+            editGroupFragment.setUI();
+
+    }
+
+    @Override
+    public void locationReceived(String userId,String nick, String groupId, Location location) {
+        Log.d(TAG,"DBMANAGER: location received");
+        locationChanged(location,userId,nick,groupId);
+    }
+
+    @Override
+    public void messageReceived(final String groupId, Message msg) {
+        Log.d(TAG,"DBMANAGER: message received");
+        final String userId = msg.getSender().getMemberId();
+        if(fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG)!=null){
+            int position = findMarker(userId,groupId);
+            final Marker marker = mapMarkers.get(position).getMarker();
+            if (position>=0) {
+                marker.setSnippet(msg.getMsg());
+                marker.showInfoWindow();
+
+                new CountDownTimer(5000, 5000) {
+
+                    public void onTick(long millisUntilFinished) {
+
                     }
-                });
+
+                    public void onFinish() {
+                        marker.hideInfoWindow();
+                    }
+                }.start();
+            }
+        }
+        else{
+            MessagesFragment messagesFragment = (MessagesFragment) fragmentManager.findFragmentByTag(MESSAGES_FRAGMENT_TAG+groupId);
+            if(messagesFragment != null)
+                messagesFragment.onMsgReceived(msg);
+        }
     }
+
+    @Override
+    public void requestReceived(Request request) {
+        Log.d(TAG,"DBMANAGER: request received");
+        int n = dbManager.getPendingRequests().size();
+        notifications.setText(n+"");
+        Notifications_fragment fragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
+        if(fragment!=null)
+            fragment.updateNotifs();
+    }
+
+    @Override
+    public void noProfileAvailable() {
+        Log.d(TAG,"DBMANAGER: no profile available");
+        final LinearLayout ll = new LinearLayout(MainActivity.this);
+        ll.setOrientation(LinearLayout.VERTICAL);
+        final EditText et = new EditText(MainActivity.this);
+        final EditText et2 = new EditText(MainActivity.this);
+        et.setHint("Phone number");
+        et2.setHint("Nick");
+        et.setInputType(InputType.TYPE_CLASS_NUMBER);
+        ll.addView(et);
+        ll.addView(et2);
+        new AlertDialog.Builder(MainActivity.this)
+                .setTitle("Phone Number & Nick")
+                .setView(ll)
+                .setCancelable(false)
+                .setPositiveButton("Next", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Log.d(TAG,"Next in dialog");
+                        String phoneNumber = Utils.generateValidPhoneNumber(et.getText().toString());
+                        String nick = et2.getText().toString();
+                        if (!phoneNumber.equals("")&&!nick.equals("")){
+                            dbManager.createProfile(phoneNumber,nick);
+                        }
+                    }
+                })
+                .show();
+    }
+
+    @Override
+    public void initMsgList(String groupId, ArrayList<Message> messages) {
+        MessagesFragment fragment = (MessagesFragment) fragmentManager.findFragmentByTag(MESSAGES_FRAGMENT_TAG+groupId);
+        if (fragment!=null){
+            fragment.initList(messages);
+        }
+    }
+
+    /****************************** GOOGLE MAPS METHODS **************************************/
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mGoogleMap = googleMap;
+        googleMap.setOnMapLoadedCallback(this);
+        googleMap.getUiSettings().setMapToolbarEnabled(false);
+
+    }
+
+    private void enableMyLocation(){
+        if ((ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)&&(ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_LOCATION);
+        } else {
+            if(mBound)
+                myLocationEnabled = mService.enableLocation();
+        }
+    }
+
+    private void disableMyLocation(){
+        if(mBound)
+            myLocationEnabled = mService.disableLocation();
+    }
+
+    @Override
+    public void onMapLoaded() {
+        mGoogleMap.setOnMapLongClickListener(this);
+        mapLoaded = true;
+        autoZoomFab.setEnabled(true);
+
+        for(MapMarker m: mapMarkers){
+            MarkerOptions options = m.getMarkerOptions();
+            Marker marker = mGoogleMap.addMarker(options);
+            marker.setVisible(DBManager.mGroups.get(m.getGroupId()));
+            m.setMarker(marker);
+        }
+
+        autoZoomFab.performClick();
+    }
+
+    @Override
+    public void onMapLongClick(LatLng point){
+        /*locationChanged(new Location(point.latitude,point.longitude,0),dbManager.getId(),dbManager.getNick(),"");*/
+        Toast.makeText(MainActivity.this,"lat: "+point.latitude+" lng: "+point.longitude,Toast.LENGTH_SHORT).show();
+    }
+
+    /********************************* ANDROID METHODS ****************************************/
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -780,7 +758,7 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
                 if (result.isSuccess()) {
                     // Google Sign In was successful, authenticate with Firebase
                     GoogleSignInAccount account = result.getSignInAccount();
-                    firebaseAuthWithGoogle(account);
+                    dbManager.signIn(account);
                 } else {
                     // Google Sign In failed, update UI appropriately
                     // ...
@@ -807,7 +785,7 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
                                     public void onClick(DialogInterface dialog, int which) {
                                         String name = et.getText().toString();
                                         if (!name.equals("")) {
-                                            createGroup(name, selectedContacts);
+                                            dbManager.createGroup(name,selectedContacts);
                                         }
                                     }
                                 })
@@ -868,7 +846,7 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
         menuItemShare = menu.findItem(R.id.action_share);
         menuItemNotif = menu.findItem(R.id.action_notifications);
         menuItemFilter = menu.findItem(R.id.action_filter);
-        if(mUser!=null)
+        if(dbManager.isAuthenticated())
             menuItemLog.setTitle("Sign out");
         else {
             menuItemShare.setVisible(false);
@@ -880,8 +858,8 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
         MenuItemCompat.setActionView(menu.findItem(R.id.action_notifications), R.layout.notification_badge);
         View count = menu.findItem(R.id.action_notifications).getActionView();
         notifications = (Button) count.findViewById(R.id.notif);
-        if(mBound)
-            notifications.setText(mService.registerClient(MainActivity.this)+"");
+        if(notifications!=null)
+            notifications.setText(dbManager.getPendingRequests().size()+"");
         notifications.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -944,7 +922,55 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
         }
     }
 
-    /************************** INTERACTIONS WITH INTERFACES **************************/
+
+/*
+    private void createGroup(String name, ArrayList<String> selectedContacts){
+
+        ArrayList<GroupMember> members = new ArrayList<>();
+        members.add(new GroupMember(Group.GROUP_STATE_ACTIVE,mUser.getUid(),mProfile.getNick()));
+        final String groupId = mUser.getUid()+System.currentTimeMillis();
+        groupsRef.child(groupId).setValue(new Group(name,members));
+        myProfileRef.child("groupsId").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                GenericTypeIndicator<ArrayList<String>> t = new GenericTypeIndicator<ArrayList<String>>() {};
+                ArrayList<String> groups = dataSnapshot.getValue(t);
+                if (groups == null)
+                    groups = new ArrayList<String>();
+                Log.d(TAG,"datasnapshot: "+dataSnapshot+" groups: "+groups);
+                groups.add(groupId);
+                myProfileRef.child("groupsId").setValue(groups);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+        for (String contact: selectedContacts){
+            ValueEventListener listener;
+            Log.d(TAG, ""+contact);
+            listener = new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    DatabaseReference requestRef = myRequestsRef.getParent().child(dataSnapshot.getValue(String.class)).push();
+                    String id = requestRef.getKey();
+                    requestRef.setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP,id));
+                }
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    Log.d(TAG,"Cancelled: publicIds "+databaseError);
+                }
+            };
+            publicIdsRef.child(contact).addListenerForSingleValueEvent(listener);
+        }
+
+    }
+
+
+
+
 
     @Override
     public ArrayList<Request> getRequests() {
@@ -1040,26 +1066,6 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
     }
 
     @Override
-    public void addFilteredGroup(String groupId) {
-        myFilteredGroups.add(groupId);
-
-        for(HashMap.Entry<String,Marker> pair : markersHM.entrySet()){
-            if(pair.getKey().endsWith(groupId))
-                pair.getValue().setVisible(true);
-        }
-    }
-
-    @Override
-    public void removeFilteredGroup(String groupId) {
-        myFilteredGroups.remove(groupId);
-
-        for(HashMap.Entry<String,Marker> pair : markersHM.entrySet()){
-            if(pair.getKey().endsWith(groupId))
-                pair.getValue().setVisible(false);
-        }
-    }
-
-    @Override
     public ArrayList<String> getActiveGroups() {
         Log.d(TAG,"ñlkdsjfklasjdfañldsjkfña ACTIVE: "+ myActiveGroups.toString());
         return myActiveGroups;
@@ -1077,81 +1083,13 @@ public class MainActivity extends AppCompatActivity implements GroupMemberRecycl
     }
 
     @Override
-    public void groupSelected(String groupId){
-        Fragment editGroupFragment = EditGroupFragment.newInstance(groupId,mUser.getUid());
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        fragmentTransaction.replace(R.id.map_fragment_content, editGroupFragment,EDIT_GROUP_FRAGMENT_TAG);
-        fragmentTransaction.addToBackStack(null);
-        fragmentTransaction.commit();
-    }
-
-    @Override
-    public void addGroupMember(){
-        checkPermissions();
-    }
-
-    @Override
     public void removeMember(String id){
         EditGroupFragment frag = (EditGroupFragment) fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG);
         if(frag!=null){
             frag.removeMember(id);
         }
     }
+*/
 
-    /******************************* GOOGLE MAPS/LOCATION CALLBACKS ****************************/
-
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mGoogleMap = googleMap;
-        googleMap.setOnMapLoadedCallback(this);
-        googleMap.getUiSettings().setMapToolbarEnabled(false);
-
-    }
-
-    private void enableMyLocation(){
-        if ((ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)&&(ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_LOCATION);
-        } else {
-            if(mBound)
-                myLocationEnabled = mService.enableLocation();
-        }
-    }
-
-    private void disableMyLocation(){
-        if(mBound)
-            myLocationEnabled = mService.disableLocation();
-    }
-
-    @Override
-    public void onMapLoaded() {
-        mGoogleMap.setOnMapLongClickListener(this);
-        mapLoaded = true;
-        autoZoomFab.setEnabled(true);
-    }
-
-    @Override
-    public void onMapLongClick(LatLng point){
-        locationChanged(new Location(point.latitude,point.longitude,0),mUser.getUid(),mProfile.getNick(),"");
-        Toast.makeText(MainActivity.this,"lat: "+point.latitude+" lng: "+point.longitude,Toast.LENGTH_SHORT).show();
-    }
-
-    @Override
-    public void onLocationChanged(Location location, String userId){
-        if(mProfile != null)
-            locationChanged(location,userId,mProfile.getNick(),"");
-    }
-
-    @Override
-    public void startResolution(Status status){
-        try {
-            // Show the dialog by calling startResolutionForResult(),
-            // and check the result in onActivityResult().
-            status.startResolutionForResult(
-                    MainActivity.this,
-                    RC_CHECK_SETTINGS);
-        } catch (IntentSender.SendIntentException e) {
-            // Ignore the error.
-        }
-    }
 
 }

@@ -1,8 +1,7 @@
-package es.udc.tfg.pruebafinalfirebase.notificationsFragment;
+package es.udc.tfg.pruebafinalfirebase.Notifications;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +10,8 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
+import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.Utils;
 
@@ -22,9 +23,9 @@ import es.udc.tfg.pruebafinalfirebase.Utils;
 public class NotifRecyclerViewAdapter extends RecyclerView.Adapter<NotifRecyclerViewAdapter.ViewHolder> {
 
     private String TAG = "NotifRecyclerView";
-    private OnNotifAdapterInteractionListener mListener;
-    private ArrayList<NotificationItem> mDataset;
+    private ArrayList<Request> mDataset;
     private Context context;
+    private DBManager dbManager;
 
     public class ViewHolder extends RecyclerView.ViewHolder {
         public TextView title, members,time;
@@ -40,19 +41,13 @@ public class NotifRecyclerViewAdapter extends RecyclerView.Adapter<NotifRecycler
         }
     }
 
-    public NotifRecyclerViewAdapter(ArrayList<NotificationItem> notifs){
+    public NotifRecyclerViewAdapter(ArrayList<Request> notifs){
         mDataset = notifs;
+        dbManager = DBManager.getInstance();
     }
 
     @Override
     public NotifRecyclerViewAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        this.context = parent.getContext();
-        if (context instanceof OnNotifAdapterInteractionListener) {
-            mListener = (OnNotifAdapterInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnNotifAdapterInteractionListener");
-        }
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.notifications_row, parent, false);
 
@@ -63,27 +58,23 @@ public class NotifRecyclerViewAdapter extends RecyclerView.Adapter<NotifRecycler
 
     @Override
     public void onBindViewHolder(NotifRecyclerViewAdapter.ViewHolder holder, final int position) {
-        holder.title.setText(mDataset.get(position).getGroupName());
-        holder.members.setText(Utils.listToString(mDataset.get(position).getMembers()));
+        final Group group = dbManager.findGroupById(mDataset.get(position).getIdGroup());
+        holder.title.setText(group.getName());
+        holder.members.setText(Utils.listToString(group.getMembersNick()));
         holder.time.setText(Utils.longToDate(mDataset.get(position).getTime()));
 
         holder.action_cancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                NotificationItem item = mDataset.get(position);
-                mDataset.remove(position);
-                notifyItemRemoved(position);
-                mListener.cancelRequest(item.getRequestId());
+                dbManager.cancelRequest(mDataset.get(position));
+                updateList();
             }
         });
         holder.action_accept.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                NotificationItem item = mDataset.get(position);
-                Log.d(TAG,item.toString());
-                mDataset.remove(position);
-                notifyItemRemoved(position);
-                mListener.acceptRequest(item.getRequestId());
+                dbManager.acceptRequest(mDataset.get(position));
+                updateList();
             }
         });
     }
@@ -93,9 +84,7 @@ public class NotifRecyclerViewAdapter extends RecyclerView.Adapter<NotifRecycler
         return mDataset.size();
     }
 
-    public interface OnNotifAdapterInteractionListener {
-        // TODO: Update argument type and name
-        void acceptRequest(String requestId);
-        void cancelRequest(String requestId);
+    private void updateList(){
+        this.notifyDataSetChanged();
     }
 }

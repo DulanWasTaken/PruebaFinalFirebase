@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase.EditGroupFragment;
+package es.udc.tfg.pruebafinalfirebase.Group;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
@@ -11,8 +11,7 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
-import es.udc.tfg.pruebafinalfirebase.Group;
-import es.udc.tfg.pruebafinalfirebase.GroupMember;
+import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.Utils;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
@@ -44,8 +43,8 @@ public class GroupsRecyclerViewAdapter extends RecyclerView.Adapter<GroupsRecycl
         }
     }
 
-    public GroupsRecyclerViewAdapter(ArrayList<Group> groups){
-        mDataset = groups;
+    public GroupsRecyclerViewAdapter(){
+        mDataset = new ArrayList<>(DBManager.mGroups.keySet());
     }
 
     @Override
@@ -83,6 +82,13 @@ public class GroupsRecyclerViewAdapter extends RecyclerView.Adapter<GroupsRecycl
                 mListener.groupSelected(mDataset.get(position).getId());
             }
         });
+        holder.row.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                mListener.groupLongClick(mDataset.get(position).getId());
+                return true;
+            }
+        });
     }
 
     @Override
@@ -91,6 +97,7 @@ public class GroupsRecyclerViewAdapter extends RecyclerView.Adapter<GroupsRecycl
     }
 
     public interface OnGroupsAdapterInteractionListener {
-        public void groupSelected(String groupId);
+        void groupSelected(String groupId);
+        void groupLongClick(String groupId);
     }
 }

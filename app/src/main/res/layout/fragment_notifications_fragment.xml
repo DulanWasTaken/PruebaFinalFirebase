@@ -2,7 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="es.udc.tfg.pruebafinalfirebase.notificationsFragment.Notifications_fragment"
+    tools:context="es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment"
     android:background="@drawable/framelayout_border">
 
     <android.support.v7.widget.RecyclerView

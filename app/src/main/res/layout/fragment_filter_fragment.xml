@@ -4,7 +4,7 @@
     android:layout_height="?attr/actionBarSize"
     android:background="@color/colorPrimaryDark"
     android:padding="10dp"
-    tools:context="es.udc.tfg.pruebafinalfirebase.filterFragment.Filter_fragment">
+    tools:context="es.udc.tfg.pruebafinalfirebase.Filter.Filter_fragment">
 
     <android.support.v7.widget.RecyclerView
         android:layout_width="match_parent"

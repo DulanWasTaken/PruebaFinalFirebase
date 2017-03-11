@@ -12,4 +12,11 @@
             android:title="Groups"
             android:id="@+id/drawer_groups"/>
     </group>
+
+    <group>
+        <item
+            android:icon="@android:drawable/ic_menu_preferences"
+            android:title="Settings"
+            android:id="@+id/drawer_settings"/>
+    </group>
 </menu>

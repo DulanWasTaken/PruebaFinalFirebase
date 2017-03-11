@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase.filterFragment;
+package es.udc.tfg.pruebafinalfirebase.Filter;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
@@ -10,6 +10,8 @@ import android.widget.Button;
 
 import java.util.ArrayList;
 
+import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.R;
 
 /**
@@ -19,9 +21,10 @@ import es.udc.tfg.pruebafinalfirebase.R;
 public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecyclerViewAdapter.ViewHolder> {
 
     private String TAG = "FilterRecyclerView";
+    private ArrayList<Group> mDatasetGroups;
+    private ArrayList<Boolean> mDatasetFilter;
+    private DBManager dbManager;
     private OnFilterAdapterInteractionListener mListener;
-    private ArrayList<FilterItem> mDataset;
-    private ArrayList<String> filteredGroups;
     private Context context;
     private Drawable but_checked,but_unchecked;
 
@@ -34,9 +37,10 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
         }
     }
 
-    public FilterRecyclerViewAdapter(ArrayList<FilterItem> activeGroups,ArrayList<String> filteredGroups){
-        mDataset = activeGroups;
-        this.filteredGroups = filteredGroups;
+    public FilterRecyclerViewAdapter(){
+        mDatasetGroups = new ArrayList<Group>(DBManager.mGroups.keySet());
+        mDatasetFilter = new ArrayList<Boolean>(DBManager.mGroups.values());
+        dbManager = DBManager.getInstance();
     }
 
     @Override
@@ -46,7 +50,7 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
             mListener = (OnFilterAdapterInteractionListener) context;
         } else {
             throw new RuntimeException(context.toString()
-                    + " must implement OnNotifAdapterInteractionListener");
+                    + " must implement OnFilterAdapterInteractionListener");
         }
 
         but_checked = parent.getResources().getDrawable(R.drawable.filter_button_checked);
@@ -62,35 +66,39 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
 
     @Override
     public void onBindViewHolder(FilterRecyclerViewAdapter.ViewHolder holder, final int position) {
-        holder.button.setText(mDataset.get(position).getGroupName());
-        if(filteredGroups.contains(mDataset.get(position).getGroupId()))
-            holder.button.setBackground(but_checked);
+
+        final Group group = mDatasetGroups.get(position);
+        final String groupName = group.getName();
+        final Boolean filtered = mDatasetFilter.get(position);
+
+        final Button b = holder.button;
+
+        holder.button.setText(groupName);
+        if(filtered)
+            b.setBackground(but_checked);
         else
-            holder.button.setBackground(but_unchecked);
+            b.setBackground(but_unchecked);
+
         holder.button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(!filteredGroups.contains(mDataset.get(position).getGroupId())) {
-                    v.setBackground(but_checked);
-                    mListener.addFilteredGroup(mDataset.get(position).getGroupId());
-                    filteredGroups.add(mDataset.get(position).getGroupId());
-                }else{
-                    v.setBackground(but_unchecked);
-                    mListener.removeFilteredGroup(mDataset.get(position).getGroupId());
-                    filteredGroups.remove(mDataset.get(position).getGroupId());
-                }
+                dbManager.setFilter(group,!filtered);
+                if(filtered)
+                    b.setBackground(but_unchecked);
+                else
+                    b.setBackground(but_checked);
+                mListener.updateFilter();
             }
         });
     }
 
     @Override
     public int getItemCount() {
-        return mDataset.size();
+        return DBManager.mGroups.size();
     }
 
     public interface OnFilterAdapterInteractionListener {
-        // TODO: Update argument type and name
-        void addFilteredGroup(String groupId);
-        void removeFilteredGroup(String groupId);
+
+        void updateFilter();
     }
 }

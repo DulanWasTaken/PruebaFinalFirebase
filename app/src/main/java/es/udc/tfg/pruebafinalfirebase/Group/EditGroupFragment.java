@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase.EditGroupFragment;
+package es.udc.tfg.pruebafinalfirebase.Group;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -23,27 +23,21 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 
-import es.udc.tfg.pruebafinalfirebase.Group;
+import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
-import es.udc.tfg.pruebafinalfirebase.Request;
+import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 import es.udc.tfg.pruebafinalfirebase.User;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.SimpleDividerItemDecoration;
 
-/**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link EditGroupFragment.OnEditGroupFragmentInteractionListener} interface
- * to handle interaction events.
- * Use the {@link EditGroupFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
+
 public class EditGroupFragment extends Fragment {
 
     private static final String ARG_PARAM1 = "groupId";
-    private static final String ARG_PARAM2 = "myId";
+
+    private DBManager dbManager;
 
     private Context context;
-    private String groupId,myId;
+    private String groupId;
     private Group group;
     private ImageButton editNameButton;
     private Button addMemberButton,exitGroupButton;
@@ -51,17 +45,15 @@ public class EditGroupFragment extends Fragment {
     private RecyclerView groupMembersRecyclerView;
 
     private OnEditGroupFragmentInteractionListener mListener;
-    private DatabaseReference groupRef,mProfileRef,publicIdRef,requestsRef;
 
     public EditGroupFragment() {
 
     }
 
-    public static EditGroupFragment newInstance(String param1, String param2) {
+    public static EditGroupFragment newInstance(String param1) {
         EditGroupFragment fragment = new EditGroupFragment();
         Bundle args = new Bundle();
         args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2,param2);
         fragment.setArguments(args);
         return fragment;
     }
@@ -71,8 +63,8 @@ public class EditGroupFragment extends Fragment {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             groupId = getArguments().getString(ARG_PARAM1);
-            myId = getArguments().getString(ARG_PARAM2);
         }
+        dbManager = DBManager.getInstance();
     }
 
     @Override
@@ -105,46 +97,24 @@ public class EditGroupFragment extends Fragment {
     public void onResume() {
         super.onResume();
 
-        publicIdRef = FirebaseDatabase.getInstance().getReference().child("publicIds");
-        requestsRef = FirebaseDatabase.getInstance().getReference().child("requests");
-        groupRef = FirebaseDatabase.getInstance().getReference().child("groups").child(groupId);
-        mProfileRef = FirebaseDatabase.getInstance().getReference().child("users").child(myId);
-        if(groupRef!=null)
-            groupRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                group = dataSnapshot.getValue(Group.class);
-                group.setId(dataSnapshot.getKey());
-                if (group!=null){
-                    setUI();
-                }else{
-                    return;
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-        else
-            return;
+        setUI();
     }
 
-    private void setUI(){
+    public void setUI(){
+        group = DBManager.findGroupById(groupId);
         editGroupName.setText(group.getName());
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(context);
         groupMembersRecyclerView.setLayoutManager(mLayoutManager);
         groupMembersRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
-        groupMembersRecyclerView.setAdapter(new GroupMemberRecyclerViewAdapter(group.getMembersId()));
+        groupMembersRecyclerView.setAdapter(new GroupMemberRecyclerViewAdapter(group.getMembersId(),groupId));
 
         editNameButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if(editGroupName.getText()!=null){
                     String name = editGroupName.getText().toString();
-                    groupRef.child("name").setValue(name);
-                    Toast.makeText(context,"Group name updated",Toast.LENGTH_SHORT).show();
+                    group.setName(name);
+                    dbManager.updateGroup(group);
                 }
 
             }
@@ -160,7 +130,8 @@ public class EditGroupFragment extends Fragment {
         exitGroupButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                groupRef.runTransaction(new Transaction.Handler() {
+                dbManager.exitGroup(group.getId());
+                /*groupRef.runTransaction(new Transaction.Handler() {
                     @Override
                     public Transaction.Result doTransaction(MutableData mutableData) {
                         Group group = mutableData.getValue(Group.class);
@@ -191,15 +162,15 @@ public class EditGroupFragment extends Fragment {
                     public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
 
                     }
-                });
-                //return;
+                });*/
             }
         });
     }
 
     public void membersAdded(ArrayList<String> membersAdded){
 
-        for (String contact: membersAdded){
+        dbManager.addMembers(groupId,membersAdded);
+        /*for (String contact: membersAdded){
             ValueEventListener listener;
             listener = new ValueEventListener() {
                 @Override
@@ -213,10 +184,10 @@ public class EditGroupFragment extends Fragment {
                 }
             };
             publicIdRef.child(contact).addListenerForSingleValueEvent(listener);
-        }
+        }*/
     }
 
-    public void removeMember(final String id){
+   /* public void removeMember(final String id){
         groupRef.runTransaction(new Transaction.Handler() {
             @Override
             public Transaction.Result doTransaction(MutableData mutableData) {
@@ -248,8 +219,8 @@ public class EditGroupFragment extends Fragment {
 
             }
         });
-        //SEND DELETE REQUEST
-    }
+
+    }*/
 
     @Override
     public void onDetach() {

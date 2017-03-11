@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Group;
 
 /**
  * Created by Usuario on 24/12/2016.

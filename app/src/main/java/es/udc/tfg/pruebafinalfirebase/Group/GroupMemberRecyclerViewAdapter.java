@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase.EditGroupFragment;
+package es.udc.tfg.pruebafinalfirebase.Group;
 
 /**
  * Created by Usuario on 30/01/2017.
@@ -15,7 +15,7 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
-import es.udc.tfg.pruebafinalfirebase.GroupMember;
+import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
 
@@ -26,9 +26,10 @@ import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
 public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMemberRecyclerViewAdapter.ViewHolder> {
     private ArrayList<GroupMember> mDataset;
     private Context context;
-    private OnGroupMemberAdapterInteractionListener mListener;
     private String TAG = "GroupMemberRecyclerViewAdapter";
     private Drawable ic_contact;
+    private String groupId;
+    private DBManager dbManager;
 
     // Provide a reference to the views for each data item
     // Complex data items may need more than one view per item, and
@@ -48,20 +49,15 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
         }
     }
 
-    public GroupMemberRecyclerViewAdapter(ArrayList<GroupMember> myDataset) {
+    public GroupMemberRecyclerViewAdapter(ArrayList<GroupMember> myDataset,String groupId) {
         mDataset = myDataset;
+        this.groupId = groupId;
+        dbManager = DBManager.getInstance();
     }
 
     // Create new views (invoked by the layout manager)
     @Override
     public GroupMemberRecyclerViewAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        this.context = parent.getContext();
-        if (context instanceof OnGroupMemberAdapterInteractionListener) {
-            mListener = (OnGroupMemberAdapterInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnGroupMemberAdapterInteractionListener");
-        }
 
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.group_member_row, parent, false);
@@ -80,9 +76,7 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
         holder.deleteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mDataset.remove(position);
-                notifyItemRemoved(position);
-                mListener.removeMember(mDataset.get(position).getMemberId());
+                dbManager.removeMember(groupId,mDataset.get(position).getMemberId());
             }
         });
         holder.photo.setImageDrawable(ic_contact);
@@ -94,15 +88,4 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
         return mDataset.size();
     }
 
-    public ArrayList<GroupMember> getmDataset(){
-        return mDataset;
-    }
-
-    public void addItemToDataset(GroupMember item, int position){
-        mDataset.add(position,item);
-    }
-
-    public interface OnGroupMemberAdapterInteractionListener{
-        public void removeMember(String id);
-    }
 }

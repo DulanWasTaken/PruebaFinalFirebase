@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Notifications;
 
 /**
  * Created by Usuario on 19/12/2016.
