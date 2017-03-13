@@ -3,6 +3,7 @@ package es.udc.tfg.pruebafinalfirebase.Group;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -101,9 +102,9 @@ public class EditGroupFragment extends Fragment {
     }
 
     public void setUI(){
-        group = DBManager.findGroupById(groupId);
+        group = dbManager.findGroupById(groupId);
         editGroupName.setText(group.getName());
-        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(context);
+        final RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(context);
         groupMembersRecyclerView.setLayoutManager(mLayoutManager);
         groupMembersRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
         groupMembersRecyclerView.setAdapter(new GroupMemberRecyclerViewAdapter(group.getMembersId(),groupId));
@@ -131,96 +132,15 @@ public class EditGroupFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 dbManager.exitGroup(group.getId());
-                /*groupRef.runTransaction(new Transaction.Handler() {
-                    @Override
-                    public Transaction.Result doTransaction(MutableData mutableData) {
-                        Group group = mutableData.getValue(Group.class);
-                        if(group==null)
-                            return Transaction.success(mutableData);
-                        group.removeMember(myId);
-                        mutableData.setValue(group);
-                        return Transaction.success(mutableData);
-                    }
-
-                    @Override
-                    public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
-
-                    }
-                });
-                mProfileRef.runTransaction(new Transaction.Handler() {
-                    @Override
-                    public Transaction.Result doTransaction(MutableData mutableData) {
-                        User user = mutableData.getValue(User.class);
-                        if (user == null)
-                            return Transaction.success(mutableData);
-                        user.removeGroup(groupId);
-                        mutableData.setValue(user);
-                        return Transaction.success(mutableData);
-                    }
-
-                    @Override
-                    public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
-
-                    }
-                });*/
+                getFragmentManager().popBackStack();
             }
         });
     }
 
     public void membersAdded(ArrayList<String> membersAdded){
-
         dbManager.addMembers(groupId,membersAdded);
-        /*for (String contact: membersAdded){
-            ValueEventListener listener;
-            listener = new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    DatabaseReference requestRef = requestsRef.child(dataSnapshot.getValue(String.class)).push();
-                    String id = requestRef.getKey();
-                    requestRef.setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP,id));
-                }
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-                }
-            };
-            publicIdRef.child(contact).addListenerForSingleValueEvent(listener);
-        }*/
     }
 
-   /* public void removeMember(final String id){
-        groupRef.runTransaction(new Transaction.Handler() {
-            @Override
-            public Transaction.Result doTransaction(MutableData mutableData) {
-                Group group = mutableData.getValue(Group.class);
-                if(group==null)
-                    return Transaction.success(mutableData);
-                group.removeMember(id);
-                mutableData.setValue(group);
-                return Transaction.success(mutableData);
-            }
-
-            @Override
-            public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
-
-            }
-        });
-
-        mProfileRef.getParent().child(id).child("request").addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                String requestId = dataSnapshot.getValue(String.class);
-                DatabaseReference auxref = requestsRef.child(requestId).push();
-                String auxid = auxref.getKey();
-                auxref.setValue(new Request(groupId,Request.REQUEST_TYPE_DELETED,auxid));
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-
-    }*/
 
     @Override
     public void onDetach() {

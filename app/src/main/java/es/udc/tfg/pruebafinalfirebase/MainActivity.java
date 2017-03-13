@@ -88,8 +88,10 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     public static final int RC_SIGN_IN = 777;
     public static final int RC_PHONE_CONTACTS = 888;
     public static final int RC_EMAIL_CONTACTS = 999;
-    public static final int RC_KEY_CONTACTS = 6;
+    public static final int RC_KEY_CONTACTS = 555;
     public static final int RC_CHECK_SETTINGS = 666;
+    public static final int RC_CREATE_GROUP = 1;
+    public static final int RC_ADD_MEMBER = 2;
     public static final int PERMISSION_REQUEST_READ_CONTACTS = 333;
     public static final int PERMISSION_REQUEST_LOCATION = 222;
     public boolean myLocationEnabled = false;
@@ -134,7 +136,7 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         pb.getWindow().setBackgroundDrawableResource(R.color.transparent);
         pb.setContentView(view);
         pb.setCancelable(false);
-        //pb.show();
+        pb.show();
         /************************ INICILIZAR GOOGLE API ********************************/
         gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
@@ -156,8 +158,8 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         /************************** INICIALIZAR VARIABLES ***************************/
         fragmentManager = getSupportFragmentManager();
         pref = getSharedPreferences("MYSERVICE", Context.MODE_PRIVATE);
-        //myLocationEnabled = pref.getBoolean("locationEnabled",false);
-        //myProfileCreated = pref.getBoolean("profileCreated",false);
+        myLocationEnabled = pref.getBoolean("locationEnabled",false);
+        myProfileCreated = pref.getBoolean("profileCreated",false);
         myServiceRunning = pref.getBoolean("serviceRunning",false);
 
 
@@ -304,9 +306,13 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         ab.setDisplayHomeAsUpEnabled(false);
 
         Fragment fragment  = fragmentManager.findFragmentById(R.id.map_fragment_content);
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        fragmentTransaction.remove(fragment);
-        fragmentTransaction.commit();
+        if(fragment!=null){
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            fragmentTransaction.remove(fragment);
+            fragmentTransaction.commit();
+        }
+
+        pb.cancel();
     }
 
     private void setMapFragment(){
@@ -379,7 +385,8 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
 
-        ab.setDisplayHomeAsUpEnabled(false);
+        ab.setDefaultDisplayHomeAsUpEnabled(true);
+        ab.setHomeAsUpIndicator(R.drawable.ic_action_arrow_back);
 
         EditGroupFragment editGroupFragment = EditGroupFragment.newInstance(groupId);
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -403,7 +410,8 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
 
-        ab.setDisplayHomeAsUpEnabled(false);
+        ab.setDefaultDisplayHomeAsUpEnabled(true);
+        ab.setHomeAsUpIndicator(R.drawable.ic_action_arrow_back);
 
         MessagesFragment messagesFragment = MessagesFragment.newInstance(groupId);
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -440,7 +448,7 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
 
     private void logout(){
-        //pb.show();
+        pb.show();
         Log.d(TAG,"logout");
         dbManager.signOut();
         Auth.GoogleSignInApi.signOut(mGoogleAuthApiClient).setResultCallback(
@@ -452,14 +460,15 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
                 });
     }
     private void login(){
+        pb.show();
         Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleAuthApiClient);
         startActivityForResult(signInIntent,RC_SIGN_IN);
     }
 
-    private void checkPermissions(){
+    private void checkPermissions(final int extraParam){
         /****************RUN-ITME PERMISSIONS FOR ANDROID 6+***************/
         if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.READ_CONTACTS}, PERMISSION_REQUEST_READ_CONTACTS);
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.READ_CONTACTS}, extraParam);
         }else{
             final CharSequence[] items = {
                     "Phone number", "Email", "Key"
@@ -478,15 +487,15 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
                     if (item == 0){
                         Intent intent = new Intent(MainActivity.this,MultiPickContactActivity.class);
                         intent.putExtra("rc",RC_PHONE_CONTACTS);
-                        startActivityForResult(intent,RC_PHONE_CONTACTS);
+                        startActivityForResult(intent,RC_PHONE_CONTACTS+extraParam);
                     }else if(item == 1){
                         Intent intent = new Intent(MainActivity.this,MultiPickContactActivity.class);
                         intent.putExtra("rc",RC_EMAIL_CONTACTS);
-                        startActivityForResult(intent,RC_EMAIL_CONTACTS);
+                        startActivityForResult(intent,RC_EMAIL_CONTACTS+extraParam);
                     }else if(item == 2){
                         /*Intent intent = new Intent(MainActivity.this,MultiPickContactActivity.class);
                         intent.putExtra("rc",RC_KEY_CONTACTS);
-                        startActivityForResult(intent,RC_KEY_CONTACTS);*/
+                        startActivityForResult(intent,RC_KEY_CONTACTS+extraParam);*/
                         Toast.makeText(MainActivity.this, "Not available yet", Toast.LENGTH_SHORT).show();
                     }
                 }
@@ -497,34 +506,53 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         }
     }
 
+    private void enableMyLocation(){
+        if ((ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)&&(ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_LOCATION);
+        } else {
+            if(mBound)
+                myLocationEnabled = mService.enableLocation();
+        }
+    }
+
+    private void disableMyLocation(){
+        if(mBound)
+            myLocationEnabled = mService.disableLocation();
+    }
+
     private void locationChanged(Location location, String userId,String nick, String groupId){
-        Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+userId+"       "+groupId);
+        Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+userId+"       "+groupId+"   ACTIVE?"+location.isActive());
         Fragment mapFragment = fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG);
+
+        int index = findMarker(userId,groupId);
 
         final MarkerOptions options = new MarkerOptions()
                 .position(new LatLng(location.getLat(), location.getLng()))
                 .title(nick);
-        Marker marker = null;
 
-        if(mapLoaded && mGoogleMap!=null && mapFragment!=null) {
-            marker = mGoogleMap.addMarker(options);
-            marker.setVisible(DBManager.mGroups.get(groupId));
-        }
-
-        int index = findMarker(userId, groupId);
-        if (index>=0) {
-            mapMarkers.get(index).setMarkerOptions(options);
-            if(mapLoaded && mGoogleMap!=null && mapFragment!=null)
-                mapMarkers.get(index).setMarker(marker);
-        } else {
-            if(mapLoaded && mGoogleMap!=null && mapFragment!=null){
-                mapMarkers.add(new MapMarker(marker,options, userId, groupId, MapMarker.LOCATION_MARKER));
-            }else{
-                mapMarkers.add(new MapMarker(options, userId, groupId, MapMarker.LOCATION_MARKER));
+        if (index >= 0){
+            MapMarker m = mapMarkers.get(index);
+            Marker marker = m.getMarker();
+            m.setMarkerOptions(options);
+            m.setActive(location.isActive());
+            if (marker!= null){
+                marker.setPosition(new LatLng(location.getLat(), location.getLng()));
+                marker.setVisible(m.isActive()&& dbManager.isFiltered(groupId));
+            }else if (mapFragment!=null && mGoogleMap!=null){
+                Marker newMarker = mGoogleMap.addMarker(options);
+                newMarker.setVisible(m.isActive()&& dbManager.isFiltered(groupId));
+                m.setMarker(newMarker);
             }
 
+        }else{
+            if(mGoogleMap!=null && mapFragment!=null){
+                Marker newMarker = mGoogleMap.addMarker(options);
+                newMarker.setVisible(location.isActive() && dbManager.isFiltered(groupId));
+                mapMarkers.add(new MapMarker(newMarker,options, userId, groupId, MapMarker.LOCATION_MARKER,location.isActive()));
+            }else{
+                mapMarkers.add(new MapMarker(options, userId, groupId, MapMarker.LOCATION_MARKER,location.isActive()));
+            }
         }
-
     }
 
     private int findMarker(String userId, String groupId){
@@ -551,17 +579,23 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
     @Override
     public void addGroupMember(){
-        checkPermissions();
+        checkPermissions(RC_ADD_MEMBER);
     }
+
 
     /************************** FILTER RECYCLER VIEW METHODS *******************************/
 
     @Override
     public void updateFilter(){
+
         for(MapMarker marker : mapMarkers){
             Marker aux = marker.getMarker();
-            aux.setVisible(DBManager.mGroups.get(marker.getGroupId()));
-            marker.setMarker(aux);
+            if(aux!=null && !marker.getGroupId().equals("")) {
+                Boolean bool = DBManager.mGroups.get(dbManager.findGroupById(marker.getGroupId()));
+                Toast.makeText(this,"active? "+bool,Toast.LENGTH_SHORT).show();
+                aux.setVisible(bool && marker.isActive());
+                marker.setMarker(aux);
+            }
         }
     }
 
@@ -590,6 +624,11 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     @Override
     public void signedIn() {
         Log.d(TAG,"DBMANAGER: signed in:  "+dbManager.isAuthenticated());
+        pref.edit().putBoolean("profileCreated",true);
+        if(!mBound){
+            Intent intent = new Intent(this, FirebaseBackgroundListeners.class);
+            bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+        }
         initView();
     }
 
@@ -661,7 +700,18 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     }
 
     @Override
+    public void requestRemoved(){
+        Log.d(TAG,"DBMANAGER: request removed");
+        int n = dbManager.getPendingRequests().size();
+        notifications.setText(n+"");
+        Notifications_fragment fragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
+        if(fragment!=null)
+            fragment.updateNotifs();
+    }
+
+    @Override
     public void noProfileAvailable() {
+        pb.cancel();
         Log.d(TAG,"DBMANAGER: no profile available");
         final LinearLayout ll = new LinearLayout(MainActivity.this);
         ll.setOrientation(LinearLayout.VERTICAL);
@@ -708,31 +758,22 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
     }
 
-    private void enableMyLocation(){
-        if ((ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)&&(ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_LOCATION);
-        } else {
-            if(mBound)
-                myLocationEnabled = mService.enableLocation();
-        }
-    }
-
-    private void disableMyLocation(){
-        if(mBound)
-            myLocationEnabled = mService.disableLocation();
-    }
 
     @Override
     public void onMapLoaded() {
         mGoogleMap.setOnMapLongClickListener(this);
         mapLoaded = true;
         autoZoomFab.setEnabled(true);
+        locationFab.setEnabled(true);
 
         for(MapMarker m: mapMarkers){
-            MarkerOptions options = m.getMarkerOptions();
-            Marker marker = mGoogleMap.addMarker(options);
-            marker.setVisible(DBManager.mGroups.get(m.getGroupId()));
-            m.setMarker(marker);
+            if(m!=null){
+                MarkerOptions options = m.getMarkerOptions();
+                Marker marker = mGoogleMap.addMarker(options);
+                Log.d(TAG,m.getGroupId());
+                marker.setVisible(dbManager.isFiltered(m.getGroupId())&& m.isActive());
+                m.setMarker(marker);
+            }
         }
 
         autoZoomFab.performClick();
@@ -744,7 +785,21 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         Toast.makeText(MainActivity.this,"lat: "+point.latitude+" lng: "+point.longitude,Toast.LENGTH_SHORT).show();
     }
 
+
     /********************************* ANDROID METHODS ****************************************/
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+
+        Fragment fragment = fragmentManager.findFragmentById(R.id.map_fragment_content);
+        if (fragment instanceof SupportMapFragment)
+            setMapFragment();
+        if (fragment instanceof Groups_fragment)
+            setGroupsFragment();
+
+        ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
+    }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -765,40 +820,47 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
                 }
                 break;
 
-            case RC_PHONE_CONTACTS:
-            case RC_EMAIL_CONTACTS:
-            case RC_KEY_CONTACTS:
+            case RC_PHONE_CONTACTS+RC_CREATE_GROUP:
+            case RC_EMAIL_CONTACTS+RC_CREATE_GROUP:
+            case RC_KEY_CONTACTS+RC_CREATE_GROUP:
                 if(resultCode==RESULT_OK) {
                     final ArrayList<String> selectedContacts = data.getStringArrayListExtra("selectedContacts");
-                    if(fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG)!=null){
-                        EditGroupFragment frag = (EditGroupFragment) fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG);
-                        frag.membersAdded(selectedContacts);
-                    }else{
-                        final EditText et = (EditText) new EditText(MainActivity.this);
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setTitle("Group name")
-                                .setMessage("Enter a name for your group")
-                                .setView(et)
-                                .setCancelable(true)
-                                .setPositiveButton("Next", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        String name = et.getText().toString();
-                                        if (!name.equals("")) {
-                                            dbManager.createGroup(name,selectedContacts);
-                                        }
+
+                    final EditText et = (EditText) new EditText(MainActivity.this);
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Group name")
+                            .setMessage("Enter a name for your group")
+                            .setView(et)
+                            .setCancelable(true)
+                            .setPositiveButton("Next", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    String name = et.getText().toString();
+                                    if (!name.equals("")) {
+                                        dbManager.createGroup(name,selectedContacts);
                                     }
-                                })
-                                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        dialog.cancel();
-                                    }
-                                })
-                                .show();
-                    }
+                                }
+                            })
+                            .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.cancel();
+                                }
+                            })
+                            .show();
+
                 }
 
+                break;
+            case RC_PHONE_CONTACTS+RC_ADD_MEMBER:
+            case RC_EMAIL_CONTACTS+RC_ADD_MEMBER:
+            case RC_KEY_CONTACTS+RC_ADD_MEMBER:
+                if(resultCode==RESULT_OK) {
+                    final ArrayList<String> selectedContacts = data.getStringArrayListExtra("selectedContacts");
+                    EditGroupFragment fragment = (EditGroupFragment) fragmentManager.findFragmentById(R.id.map_fragment_content);
+                    if (fragment != null)
+                        fragment.membersAdded(selectedContacts);
+                }
                 break;
             case RC_CHECK_SETTINGS:
                 switch (resultCode) {
@@ -820,10 +882,18 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
-            case PERMISSION_REQUEST_READ_CONTACTS:
+            case RC_ADD_MEMBER:
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    checkPermissions();
+                    checkPermissions(RC_ADD_MEMBER);
+                } else {
+                    Toast.makeText(MainActivity.this,"Permissions denied",Toast.LENGTH_SHORT).show();
+                }
+                break;
+            case RC_CREATE_GROUP:
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    checkPermissions(RC_CREATE_GROUP);
                 } else {
                     Toast.makeText(MainActivity.this,"Permissions denied",Toast.LENGTH_SHORT).show();
                 }
@@ -888,17 +958,21 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_log:
-                //pb.show();
+                pb.show();
                 if(menuItemLog.getTitle().toString().equals("Sign in"))
                     login();
                 else if(menuItemLog.getTitle().toString().equals("Sign out"))
                     logout();
                 return true;
             case R.id.action_share:
-                checkPermissions();
+                checkPermissions(RC_CREATE_GROUP);
                 return true;
             case android.R.id.home:
-                mDrawerLayout.openDrawer(GravityCompat.START);
+                Fragment fragment1 = fragmentManager.findFragmentById(R.id.map_fragment_content);
+                if(fragment1 instanceof EditGroupFragment || fragment1 instanceof MessagesFragment)
+                    onBackPressed();
+                else
+                    mDrawerLayout.openDrawer(GravityCompat.START);
                 return true;
             case R.id.action_filter:
                 FragmentTransaction transaction = fragmentManager.beginTransaction();
@@ -921,175 +995,5 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
         }
     }
-
-
-/*
-    private void createGroup(String name, ArrayList<String> selectedContacts){
-
-        ArrayList<GroupMember> members = new ArrayList<>();
-        members.add(new GroupMember(Group.GROUP_STATE_ACTIVE,mUser.getUid(),mProfile.getNick()));
-        final String groupId = mUser.getUid()+System.currentTimeMillis();
-        groupsRef.child(groupId).setValue(new Group(name,members));
-        myProfileRef.child("groupsId").addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                GenericTypeIndicator<ArrayList<String>> t = new GenericTypeIndicator<ArrayList<String>>() {};
-                ArrayList<String> groups = dataSnapshot.getValue(t);
-                if (groups == null)
-                    groups = new ArrayList<String>();
-                Log.d(TAG,"datasnapshot: "+dataSnapshot+" groups: "+groups);
-                groups.add(groupId);
-                myProfileRef.child("groupsId").setValue(groups);
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-
-        for (String contact: selectedContacts){
-            ValueEventListener listener;
-            Log.d(TAG, ""+contact);
-            listener = new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    DatabaseReference requestRef = myRequestsRef.getParent().child(dataSnapshot.getValue(String.class)).push();
-                    String id = requestRef.getKey();
-                    requestRef.setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP,id));
-                }
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-                    Log.d(TAG,"Cancelled: publicIds "+databaseError);
-                }
-            };
-            publicIdsRef.child(contact).addListenerForSingleValueEvent(listener);
-        }
-
-    }
-
-
-
-
-
-    @Override
-    public ArrayList<Request> getRequests() {
-        Log.d(TAG,"getRequests... bound = "+mBound);
-        if (mBound)
-            return mService.getPendingRequests();
-        return new ArrayList<>();
-    }
-
-
-    @Override
-    public void acceptRequest(String requestId) {
-        Log.d(TAG,requestId);
-        myRequestsRef.child(requestId).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                final Request request = dataSnapshot.getValue(Request.class);
-                Log.d(TAG,"group id: "+request.getIdGroup());
-                groupsRef.child(request.getIdGroup()).runTransaction(new Transaction.Handler() {
-                    @Override
-                    public Transaction.Result doTransaction(MutableData mutableData) {
-                        Group grupo = mutableData.getValue(Group.class);
-                        Log.d(TAG,"mutabledata "+mutableData+" group "+grupo);
-                        if (grupo==null)
-                            return Transaction.success(mutableData);
-                        else {
-                            Log.d(TAG, "NO NULO: " + mutableData);
-                            ArrayList<GroupMember> aux = grupo.getMembersId();
-                            GroupMember aux2 = new GroupMember(Group.GROUP_STATE_ACTIVE,mUser.getUid(),mProfile.getNick());
-                            if (!aux.contains(aux2))
-                                aux.add(aux2);
-                            grupo.setMembersId(aux);
-                            mutableData.setValue(grupo);
-                            Log.d(TAG, "FINAL  "+mutableData);
-                            return Transaction.success(mutableData);
-                        }
-                    }
-
-                    @Override
-                    public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
-
-                    }
-                });
-                myProfileRef.runTransaction(new Transaction.Handler() {
-                    @Override
-                    public Transaction.Result doTransaction(MutableData mutableData) {
-                        User user = mutableData.getValue(User.class);
-                        if (user == null)
-                            return Transaction.success(mutableData);
-                        user.addGroup(request.getIdGroup());
-                        mutableData.setValue(user);
-                        return Transaction.success(mutableData);
-                    }
-
-                    @Override
-                    public void onComplete(DatabaseError databaseError, boolean b, DataSnapshot dataSnapshot) {
-
-                    }
-                });
-                dataSnapshot.getRef().removeValue();
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-
-    }
-
-    @Override
-    public void cancelRequest(String requestId){
-        myRequestsRef.child(requestId).removeValue();
-    }
-
-    @Override
-    public void onRequestReceived(String requestId) {
-        int aux = Integer.parseInt(notifications.getText().toString());
-        aux++;
-        notifications.setText(String.valueOf(aux));
-
-        Notifications_fragment existFragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
-        if (existFragment != null){
-            existFragment.onResume();
-        }
-    }
-
-    @Override
-    public void onRequestRemoved() {
-        int aux = Integer.parseInt(notifications.getText().toString());
-        aux--;
-        notifications.setText(String.valueOf(aux));
-    }
-
-    @Override
-    public ArrayList<String> getActiveGroups() {
-        Log.d(TAG,"ñlkdsjfklasjdfañldsjkfña ACTIVE: "+ myActiveGroups.toString());
-        return myActiveGroups;
-    }
-
-    @Override
-    public ArrayList<String> getFilteredGroups() {
-        Log.d(TAG,"KALÑDJFASÑJDFKLAJÑDF FILTERED: "+myFilteredGroups);
-        return myFilteredGroups;
-    }
-
-    @Override
-    public ArrayList<String> getGroups(){
-        return myActiveGroups;
-    }
-
-    @Override
-    public void removeMember(String id){
-        EditGroupFragment frag = (EditGroupFragment) fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG);
-        if(frag!=null){
-            frag.removeMember(id);
-        }
-    }
-*/
-
 
 }

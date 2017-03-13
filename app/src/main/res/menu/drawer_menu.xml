@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
-    <group android:checkableBehavior="single">
+    <group android:checkableBehavior="single"
+        android:id="@+id/drawer_main_group">
         <item
             android:icon="@android:drawable/ic_dialog_map"
             android:title="Map"
@@ -13,7 +14,8 @@
             android:id="@+id/drawer_groups"/>
     </group>
 
-    <group>
+    <group android:checkableBehavior="single"
+        android:id="@+id/drawer_settings_group">
         <item
             android:icon="@android:drawable/ic_menu_preferences"
             android:title="Settings"

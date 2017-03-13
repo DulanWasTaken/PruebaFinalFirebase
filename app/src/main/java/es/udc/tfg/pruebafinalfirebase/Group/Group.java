@@ -1,6 +1,7 @@
 package es.udc.tfg.pruebafinalfirebase.Group;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * Created by Usuario on 21/12/2016.
@@ -79,10 +80,16 @@ public class Group {
 
     public void removeMember(String id){
         if(id!=null && !id.equals("")){
-            for(GroupMember member : membersId){
+            Iterator<GroupMember> iter = membersId.iterator();
+            while (iter.hasNext()) {
+                GroupMember member = iter.next();
+                if (member.getMemberId().equals(id))
+                    iter.remove();
+            }
+            /*for(GroupMember member : membersId){
                 if(member.getMemberId().equals(id))
                     membersId.remove(member);
-            }
+            }*/
         }
     }
 }

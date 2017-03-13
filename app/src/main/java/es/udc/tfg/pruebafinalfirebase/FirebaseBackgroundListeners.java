@@ -94,7 +94,6 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
                 .build();
         mGoogleLocateApiClient.connect();
 
-        dbManager.bindDBManager(FirebaseBackgroundListeners.this);
     }
 
     @Override
@@ -190,6 +189,8 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
         editor.putBoolean("locationEnabled",false);
         editor.commit();
         dbManager.disableMyLocation();
+        if(mListener!=null)
+            mListener.onMyLocationChanged(new es.udc.tfg.pruebafinalfirebase.Location(0,0,0,false));
         return false;
     }
 
@@ -202,7 +203,7 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        Log.d(TAG,"AAKSDLJFLSKA    LOCATION ENABLED: "+pref.getBoolean("locationEnabled",false));
+        Log.d(TAG,"LOCATION ENABLED: "+pref.getBoolean("locationEnabled",false));
         if(pref.getBoolean("locationEnabled",false))
             enableLocation();
         else
@@ -257,6 +258,11 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
 
     @Override
     public void requestReceived(Request request) {
+
+    }
+
+    @Override
+    public void requestRemoved(){
 
     }
 

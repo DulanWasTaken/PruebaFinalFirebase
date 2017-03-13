@@ -37,7 +37,7 @@ import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
  */
 public class DBManager {
     private static final String DB_USER_REFERENCE = "users";
-    private static final String DB_USER_LOCATION_REFERENCE = "users";
+    private static final String DB_USER_LOCATION_REFERENCE = "location";
     private static final String DB_USER_REQUEST_REFERENCE = "request";
     private static final String DB_USER_GROUPS_REFERENCE = "groupsId";
     private static final String DB_GROUPS_REFERENCE = "groups";
@@ -59,10 +59,12 @@ public class DBManager {
     private ValueEventListener userLocationListener;
     private ChildEventListener groupMembersListener;
     private ChildEventListener groupMsgListener;
+    private ValueEventListener groupRequestListener;
     private FirebaseUser mUser;
     private User mProfile;
 
     public static ArrayList<Request> pendingRequests = new ArrayList<>();
+    public static ArrayList<Group> mGroupsRequest = new ArrayList<>();
     public static LinkedHashMap<Group,Boolean> mGroups = new LinkedHashMap<>();
     public boolean authenticated = false;
 
@@ -74,9 +76,11 @@ public class DBManager {
     /*********************************** AUTH METHODS ******************************************/
 
     private DBManager() {
+        Log.d(TAG,"create");
         DBauth.addAuthStateListener(new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                Log.d(TAG,"auth listener");
                 mUser = firebaseAuth.getCurrentUser();
 
                 if (mUser!=null){
@@ -86,9 +90,11 @@ public class DBManager {
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             if(dataSnapshot.exists()){
                                 mProfile = dataSnapshot.getValue(User.class);
+                                Log.d(TAG,"ASLÑDKFJASLÑDFJ  "+mProfile.toString()+ "  "+mListener.toString());
                                 if(mProfile!=null){
                                     mProfileReference = DBroot.child(DB_USER_REFERENCE).child(mUser.getUid());
                                     if(mListener!=null && !authenticated){
+                                        Log.d(TAG, "entramos");
                                         authenticated=true;
                                         mListener.signedIn();
                                     }
@@ -110,7 +116,8 @@ public class DBManager {
                     Log.d(TAG,"LOG OUT");
                     mProfile = null;
                     mProfileReference = null;
-                    if(mListener!=null && authenticated){
+                    if(mListener!=null){
+                        Log.d(TAG,"LOG OUT,,, listener: "+mListener.toString());
                         mListener.signedOut();
                         authenticated=false;
                     }
@@ -123,6 +130,7 @@ public class DBManager {
         DBroot.child(DB_USER_REFERENCE).child(id).child(DB_USER_GROUPS_REFERENCE).addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                Log.d(TAG,"GROUP ADDED");
                 final String groupId = dataSnapshot.getValue(String.class);
                 if(mListener!=null)
                     //mListener.groupAdded(groupId);
@@ -246,6 +254,7 @@ public class DBManager {
 
             @Override
             public void onChildRemoved(DataSnapshot dataSnapshot) {
+                Log.d(TAG,"GROUP REMOVED");
                 String groupId = dataSnapshot.getValue(String.class);
                 if (groupId!=null){
                     DBroot.child(DB_GROUPS_REFERENCE).child(groupId).removeEventListener(groupListener);
@@ -272,9 +281,32 @@ public class DBManager {
                     Request request = dataSnapshot.getValue(Request.class);
                     if (request != null){
                         if(request.getType()==Request.REQUEST_TYPE_DELETED){
-                            exitGroup(request.getIdGroup());
+                            ArrayList<String> aux = mProfile.getGroupsId();
+                            aux.remove(request.getIdGroup());
+                            removeGroup(request.getIdGroup());
+                            DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_GROUPS_REFERENCE).setValue(aux);
+                            DBroot.child(DB_REQUESTS_REFERENCE).child(mProfile.getRequest()).child(request.getId()).removeValue();
                         }else {
-                            pendingRequests.add(request);
+                            groupRequestListener = new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                    if(dataSnapshot.exists()){
+                                        String id = dataSnapshot.getKey();
+                                        Group group = dataSnapshot.getValue(Group.class);
+                                        if(group!=null) {
+                                            group.setId(id);
+                                            updateRequestGroup(group);
+                                        }
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
+
+                                }
+                            };
+                            DBroot.child(DB_GROUPS_REFERENCE).child(request.getIdGroup()).addListenerForSingleValueEvent(groupRequestListener);
+                            updatePendingRequests(request);
                             if (mListener != null)
                                 mListener.requestReceived(request);
                         }
@@ -291,8 +323,12 @@ public class DBManager {
             public void onChildRemoved(DataSnapshot dataSnapshot) {
                 if(dataSnapshot.exists()){
                     Request request = dataSnapshot.getValue(Request.class);
-                    if(request!=null && request.getType()==Request.REQUEST_TYPE_GROUP)
-                        pendingRequests.remove(request);
+                    if(request!=null && request.getType()==Request.REQUEST_TYPE_GROUP){
+                        DBroot.child(DB_USER_GROUPS_REFERENCE).child(request.getIdGroup()).removeEventListener(groupRequestListener);
+                        mGroupsRequest.remove(findGroupByRequest(request.getIdGroup()));
+                        removeRequest(request);
+                        mListener.requestRemoved();
+                    }
                 }
             }
 
@@ -309,7 +345,16 @@ public class DBManager {
     }
 
     private void updateGroupList(Group group){
-        Boolean found = false;
+        ArrayList<Group> aux = new ArrayList<>(mGroups.keySet());
+        for(Group g : aux){
+            if (g.getId().equals(group.getId())){
+                mGroups.put(group,mGroups.get(g));
+                mGroups.remove(g);
+                return;
+            }
+        }
+        mGroups.put(group,true);
+        /*Boolean found = false;
         Iterator it = mGroups.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry)it.next();
@@ -321,7 +366,51 @@ public class DBManager {
             }
         }
         if(!found)
-            mGroups.put(group,true);
+            mGroups.put(group,true);*/
+    }
+
+    private void updateRequestGroup(Group group){
+        for(Group gr : mGroupsRequest){
+            if (gr != null)
+                if(gr.getId().equals(group.getId())){
+                    mGroupsRequest.remove(gr);
+                    mGroupsRequest.add(group);
+                    return;
+                }
+        }
+        mGroupsRequest.add(group);
+    }
+
+    private void updatePendingRequests(Request request){
+        for(Request req :pendingRequests){
+            if(req!=null)
+                if(req.getId().equals(request.getId())){
+                    pendingRequests.remove(req);
+                    pendingRequests.add(request);
+                    return;
+                }
+        }
+        pendingRequests.add(request);
+    }
+
+    private void removeGroup(String groupId){
+        ArrayList<Group> aux = new ArrayList<>(mGroups.keySet());
+        for(Group g : aux){
+            if (g.getId().equals(groupId)){
+                mGroups.remove(g);
+                return;
+            }
+        }
+    }
+
+    private void removeRequest(Request request){
+        for(Request r : pendingRequests){
+            if(r.getId().equals(request.getId())) {
+                pendingRequests.remove(r);
+                return;
+            }
+
+        }
     }
 
     public void bindDBManager(Context context){
@@ -332,6 +421,11 @@ public class DBManager {
             throw new RuntimeException(context.toString()
                     + " must implement DBManagerInteractions");
         }
+
+        if(authenticated)
+            mListener.signedIn();
+        else
+            mListener.signedOut();
     }
 
     public void signIn(GoogleSignInAccount googlekey){
@@ -400,9 +494,11 @@ public class DBManager {
     }
 
     public void disableMyLocation(){
-        Location aux = mProfile.getLocation();
-        aux.setActive(false);
-        DBroot.child(DB_USER_REFERENCE).child(DB_USER_LOCATION_REFERENCE).setValue(aux);
+        if(mProfile!=null){
+            Location aux = mProfile.getLocation();
+            aux.setActive(false);
+            DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_LOCATION_REFERENCE).setValue(aux);
+        }
     }
 
     /*********************************** GROUPS METHODS ******************************************/
@@ -418,7 +514,8 @@ public class DBManager {
         ArrayList<String> mGroups = mProfile.getGroupsId();
         if(mGroups == null)
             mGroups = new ArrayList<>();
-        mProfileReference.child(DB_USER_GROUPS_REFERENCE).setValue(mGroups.add(groupId));
+        mGroups.add(groupId);
+        mProfileReference.child(DB_USER_GROUPS_REFERENCE).setValue(mGroups);
 
         for(String contact : contacts){
             DBroot.child(DB_PUBLICID_REFERENCE).child(contact).addListenerForSingleValueEvent(new ValueEventListener() {
@@ -465,19 +562,36 @@ public class DBManager {
         ArrayList<String> mGroups = mProfile.getGroupsId();
         if(mGroups == null)
             mGroups = new ArrayList<>();
-        mProfileReference.child(DB_USER_GROUPS_REFERENCE).setValue(mGroups.add(groupId));
+        mGroups.add(groupId);
+        mProfileReference.child(DB_USER_GROUPS_REFERENCE).setValue(mGroups);
     }
 
     public LinkedHashMap<Group,Boolean> getMyGroups(){
         return mGroups;
     }
 
-    public static Group findGroupById(String id){
+    public Group findGroupById(String id){
         for(Group group : mGroups.keySet()){
             if(group.getId().equals(id))
                 return group;
         }
         return null;
+    }
+
+    public Group findGroupByRequest (String id){
+        for(Group group : mGroupsRequest){
+            if(group.getId().equals(id))
+                return group;
+        }
+        return null;
+    }
+
+    public Boolean isFiltered(String groupId){
+        Group group = findGroupById(groupId);
+        if(group!= null)
+            return mGroups.get(group);
+        else
+            return true;
     }
 
     public void acceptRequest(Request request){
@@ -521,36 +635,7 @@ public class DBManager {
     }
 
     public void exitGroup(final String groupId){
-        DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_MEMBERS_REFERENCE).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                for(DataSnapshot child : dataSnapshot.getChildren()){
-                    GroupMember member = child.getValue(GroupMember.class);
-                    if(member.getMemberId().equals(mProfile.getId()))
-                        child.getRef().removeValue();
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-        DBroot.child(DB_USER_REFERENCE).child(DB_USER_GROUPS_REFERENCE).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                for (DataSnapshot child : dataSnapshot.getChildren()){
-                    String group = child.getValue(String.class);
-                    if(group.equals(groupId))
-                        child.getRef().removeValue();
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
+        removeMember(groupId,mUser.getUid());
     }
 
     public void addMembers(final String groupId, ArrayList<String> members){
@@ -591,21 +676,9 @@ public class DBManager {
 
             }
         });
-        DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_MEMBERS_REFERENCE).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                for(DataSnapshot child : dataSnapshot.getChildren()){
-                    GroupMember member = child.getValue(GroupMember.class);
-                    if(member.getMemberId().equals(userId))
-                        child.getRef().removeValue();
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
+        Group group = findGroupById(groupId);
+        group.removeMember(userId);
+        DBroot.child(DB_GROUPS_REFERENCE).child(groupId).setValue(group);
     }
 
     /*********************************** COMMUNICATION INTERFACE ******************************************/
@@ -617,6 +690,7 @@ public class DBManager {
         void locationReceived(String userId,String nick, String groupId, Location location);
         void messageReceived(String groupId, Message msg);
         void requestReceived(Request request);
+        void requestRemoved();
         void noProfileAvailable();
         void initMsgList(String groupId, ArrayList<Message> messages);
 

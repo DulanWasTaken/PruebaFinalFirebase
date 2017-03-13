@@ -16,6 +16,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
@@ -58,6 +59,7 @@ public class Groups_fragment extends Fragment {
         mRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
         adapter = new GroupsRecyclerViewAdapter();
         mRecyclerView.setAdapter(adapter);
+
     }
 
     public void updateGroupList(){

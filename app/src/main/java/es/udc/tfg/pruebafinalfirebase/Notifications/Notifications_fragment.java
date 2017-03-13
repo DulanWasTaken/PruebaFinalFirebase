@@ -2,6 +2,7 @@ package es.udc.tfg.pruebafinalfirebase.Notifications;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -9,6 +10,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
@@ -50,7 +52,6 @@ public class Notifications_fragment extends Fragment{
         mRecyclerView.setLayoutManager(mLayoutManager);
         mRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
         mRecyclerView.setAdapter(new NotifRecyclerViewAdapter(DBManager.pendingRequests));
-
     }
 
     public void updateNotifs(){

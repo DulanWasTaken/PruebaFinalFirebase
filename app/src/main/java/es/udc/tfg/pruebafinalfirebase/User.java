@@ -113,6 +113,7 @@ public class User {
     }
 
     public void removeGroup(String groupId){
+
         groupsId.remove(groupId);
     }
 

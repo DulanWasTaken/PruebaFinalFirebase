@@ -16,23 +16,34 @@ public class MapMarker {
     String groupId;
     Long time;
     int type;
+    boolean active;
 
     public MapMarker() {
     }
 
-    public MapMarker(Marker marker,MarkerOptions markerOptions, String userId, String groupId, int type) {
+    public MapMarker(Marker marker,MarkerOptions markerOptions, String userId, String groupId, int type,boolean active) {
         this.marker = marker;
         this.userId = userId;
         this.groupId = groupId;
         this.type = type;
         this.markerOptions = markerOptions;
+        this.active = active;
     }
 
-    public MapMarker(MarkerOptions markerOptions, String userId, String groupId, int type) {
+    public MapMarker(MarkerOptions markerOptions, String userId, String groupId, int type,boolean active) {
         this.userId = userId;
         this.groupId = groupId;
         this.type = type;
+        this.active = active;
         this.markerOptions = markerOptions;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 
     public Marker getMarker() {

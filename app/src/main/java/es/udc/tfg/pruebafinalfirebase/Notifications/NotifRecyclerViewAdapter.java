@@ -58,25 +58,25 @@ public class NotifRecyclerViewAdapter extends RecyclerView.Adapter<NotifRecycler
 
     @Override
     public void onBindViewHolder(NotifRecyclerViewAdapter.ViewHolder holder, final int position) {
-        final Group group = dbManager.findGroupById(mDataset.get(position).getIdGroup());
-        holder.title.setText(group.getName());
-        holder.members.setText(Utils.listToString(group.getMembersNick()));
-        holder.time.setText(Utils.longToDate(mDataset.get(position).getTime()));
+        final Group group = dbManager.findGroupByRequest(mDataset.get(position).getIdGroup());
+        if (group!=null) {
+            holder.title.setText(group.getName());
+            holder.members.setText(Utils.listToString(group.getMembersNick()));
+            holder.time.setText(Utils.longToDate(mDataset.get(position).getTime()));
 
-        holder.action_cancel.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dbManager.cancelRequest(mDataset.get(position));
-                updateList();
-            }
-        });
-        holder.action_accept.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dbManager.acceptRequest(mDataset.get(position));
-                updateList();
-            }
-        });
+            holder.action_cancel.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dbManager.cancelRequest(mDataset.get(position));
+                }
+            });
+            holder.action_accept.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dbManager.acceptRequest(mDataset.get(position));
+                }
+            });
+        }
     }
 
     @Override
@@ -84,7 +84,4 @@ public class NotifRecyclerViewAdapter extends RecyclerView.Adapter<NotifRecycler
         return mDataset.size();
     }
 
-    private void updateList(){
-        this.notifyDataSetChanged();
-    }
 }
