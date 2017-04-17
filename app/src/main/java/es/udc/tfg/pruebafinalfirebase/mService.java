@@ -1,6 +1,8 @@
 package es.udc.tfg.pruebafinalfirebase;
 
+import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -35,12 +37,16 @@ import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
-public class FirebaseBackgroundListeners extends Service implements DBManager.DBManagerInteractions,LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
+public class mService extends Service implements DBManager.DBManagerInteractions,LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
 
     private String TAG = "MYSERVICE";
     public static final int RC_CHECK_SETTINGS = 33333;
     public static final int LOCATION_ENABLED_NOTIF = 1111;
     public static final int REQUEST_RECEIVED_NOTIF = 2222;
+    public static final int NOTIF_ID_MSG_RECEIVED = 1234;
+    public static final int NOTIF_ID_REQ_RECEIVED = 9874;
+    public static final int NEW_MSG_CODE = 5678;
+    public static final int NEW_REQ_CODE = 7985;
     private boolean running = false;
     private boolean bound = false;
     private boolean locationEnabled = false;
@@ -51,14 +57,15 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
     private NotificationManager mNotifyMgr;
     private GoogleApiClient mGoogleLocateApiClient;
     private DBManager dbManager = DBManager.getInstance();
+    private ArrayList<Message> pendingMsg = new ArrayList<>();
 
-    public FirebaseBackgroundListeners() {
+    public mService() {
     }
 
     public class LocalBinder extends Binder {
-        FirebaseBackgroundListeners getService() {
+        mService getService() {
             // Return this instance of LocalService so clients can call public methods
-            return FirebaseBackgroundListeners.this;
+            return mService.this;
         }
     }
 
@@ -66,6 +73,9 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "onBind");
         bound = true;
+        pendingMsg.clear();
+        mNotifyMgr.cancel(NOTIF_ID_MSG_RECEIVED);
+        mNotifyMgr.cancel(NOTIF_ID_REQ_RECEIVED);
         return mBinder;
     }
 
@@ -73,7 +83,7 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "onUnBind");
         bound = false;
-        dbManager.bindDBManager(FirebaseBackgroundListeners.this);
+        dbManager.bindDBManager(mService.this);
         return super.onUnbind(intent);
     }
 
@@ -153,11 +163,11 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
                     case LocationSettingsStatusCodes.SUCCESS:
                         // All location settings are satisfied. The client can
                         // initialize location requests here.
-                        if (ActivityCompat.checkSelfPermission(FirebaseBackgroundListeners.this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(FirebaseBackgroundListeners.this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        if (ActivityCompat.checkSelfPermission(mService.this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mService.this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                             return;
                         }
 
-                        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleLocateApiClient, mLocationRequest, FirebaseBackgroundListeners.this);
+                        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleLocateApiClient, mLocationRequest, mService.this);
                         SharedPreferences.Editor editor = pref.edit();
                         editor.putBoolean("locationEnabled",true);
                         editor.commit();
@@ -253,12 +263,40 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
 
     @Override
     public void messageReceived(String groupId, Message msg) {
-
+        pendingMsg.add(msg);
+        Intent msgIntent = new Intent(this, MainActivity.class);
+        PendingIntent msgPIntent = PendingIntent.getActivity(this, NEW_MSG_CODE, msgIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        Notification.Builder mBuilder = new Notification.Builder(this) // builder notification
+                .setSmallIcon(R.mipmap.main_ic_launch) // Icon to show in the Status Bar
+                .setContentTitle("Message received") // Title to show in the Status Bar
+                .setContentIntent(msgPIntent);
+        Notification.InboxStyle is = new Notification.InboxStyle();
+        for(Message m : pendingMsg){
+            is.addLine("["+dbManager.findGroupById(groupId).getName()+"]"+m.getSender().getNick()+": "+m.getMsg());
+        }
+        String summ = pendingMsg.size()>1? "new messages":"new message";
+        is.setSummaryText(pendingMsg.size()+" "+summ);
+        mBuilder.setStyle(is);
+        if(!bound)
+            mNotifyMgr.notify(NOTIF_ID_MSG_RECEIVED,mBuilder.build());
     }
 
     @Override
     public void requestReceived(Request request) {
-
+        Intent requestIntent = new Intent(this, MainActivity.class);
+        PendingIntent requestPIntent = PendingIntent.getActivity(this, NEW_REQ_CODE, requestIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        Notification.Builder mBuilder = new Notification.Builder(this) // builder notification
+                .setSmallIcon(R.mipmap.main_ic_launch) // Icon to show in the Status Bar
+                .setContentTitle("Invitation received") // Title to show in the Status Bar
+                .setContentIntent(requestPIntent);
+        Notification.InboxStyle is = new Notification.InboxStyle();
+        for(Request r : DBManager.pendingRequests){
+            is.addLine("Invitation to group ["+dbManager.findGroupByRequest(r.getIdGroup()).getName()+"]");
+        }
+        String summ = DBManager.pendingRequests.size()>1? "new requests":"new request";
+        is.setSummaryText(DBManager.pendingRequests.size()+" "+summ);
+        mBuilder.setStyle(is);
+        mNotifyMgr.notify(NOTIF_ID_REQ_RECEIVED,mBuilder.build());
     }
 
     @Override
@@ -273,6 +311,11 @@ public class FirebaseBackgroundListeners extends Service implements DBManager.DB
 
     @Override
     public void initMsgList(String groupId, ArrayList<Message> messages) {
+
+    }
+
+    @Override
+    public void updateFilter(){
 
     }
 }

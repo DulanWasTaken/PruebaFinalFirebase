@@ -7,6 +7,7 @@
     <color name="colorAccentDark">#8e982d</color>
     <color name="transparent">#CA2E2E2E</color>
     <color name="divider_gray">#9e9e9e</color>
-    <color name="validate_green">#A9F5A9</color>
+    <color name="validate_green">#6BE06B</color>
     <color name="cancel_red">#DB736B</color>
+    <color name="text_white">#FFFFFF</color>
 </resources>

@@ -1,5 +1,7 @@
 package es.udc.tfg.pruebafinalfirebase;
 
+import android.graphics.Color;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -27,6 +29,35 @@ public class Utils {
         Date date = new Date(time);
         SimpleDateFormat df2 = new SimpleDateFormat("dd/MM/yy");
         String result = df2.format(date);
+
+        Date end = new Date();
+
+
+        long diffInSeconds = (end.getTime() - date.getTime()) / 1000;
+
+        long diff[] = new long[] { 0, 0, 0, 0 };
+        diff[3] = (diffInSeconds >= 60 ? diffInSeconds % 60 : diffInSeconds);
+        diff[2] = (diffInSeconds = (diffInSeconds / 60)) >= 60 ? diffInSeconds % 60 : diffInSeconds;
+        diff[1] = (diffInSeconds = (diffInSeconds / 60)) >= 24 ? diffInSeconds % 24 : diffInSeconds;
+        diff[0] = (diffInSeconds = (diffInSeconds / 24));
+
+        if (diff[0]<5){
+            if (diff[0]>1)
+                result = ("Hace "+diff[0]+" días");
+            else if (diff[0]==1)
+                result = ("Ayer");
+            else if (diff[1]>1)
+                result = ("Hace "+diff[1]+" horas");
+            else if (diff[1]==1)
+                result = ("Hace una hora");
+            else if (diff[2]>1)
+                result = ("Hace "+diff[2]+" minutos");
+            else if (diff[2]==1)
+                result = ("Hace un minuto");
+            else
+                result = ("Hace unos segundos");
+        }
+
         return result;
     }
 
@@ -45,5 +76,16 @@ public class Utils {
         }
 
         return result;
+    }
+
+    public static Float stringToHueColor(String str){
+        int hash = str.hashCode();
+        int red = (hash & 0xFF0000) >> 16;
+        int green = (hash & 0x00FF00) >> 8;
+        int blue = hash & 0x0000FF;
+
+        float[] hsv = new float[3];
+        Color.RGBToHSV(red, green, blue, hsv);
+        return hsv[0];
     }
 }

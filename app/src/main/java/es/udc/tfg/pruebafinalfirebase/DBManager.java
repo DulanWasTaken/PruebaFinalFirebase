@@ -66,7 +66,8 @@ public class DBManager {
     public static ArrayList<Request> pendingRequests = new ArrayList<>();
     public static ArrayList<Group> mGroupsRequest = new ArrayList<>();
     public static LinkedHashMap<Group,Boolean> mGroups = new LinkedHashMap<>();
-    public boolean authenticated = false;
+    public Boolean authenticated = null;
+    private String lastMsgKey = "";
 
     public static DBManager getInstance() {
         Log.d(TAG,"GET SINGLETON INSTANCE");
@@ -90,14 +91,18 @@ public class DBManager {
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             if(dataSnapshot.exists()){
                                 mProfile = dataSnapshot.getValue(User.class);
-                                Log.d(TAG,"ASLÑDKFJASLÑDFJ  "+mProfile.toString()+ "  "+mListener.toString());
                                 if(mProfile!=null){
                                     mProfileReference = DBroot.child(DB_USER_REFERENCE).child(mUser.getUid());
-                                    if(mListener!=null && !authenticated){
-                                        Log.d(TAG, "entramos");
-                                        authenticated=true;
-                                        mListener.signedIn();
+                                    if(mListener!=null){
+                                        if(authenticated!=null){
+                                            if(!authenticated)
+                                                authenticated = true;
+                                                mListener.signedIn();
+                                        } else{
+                                            mListener.signedIn();
+                                        }
                                     }
+                                    authenticated = true;
                                     initListeners(mUser.getUid());
                                 }
                             }else{
@@ -116,10 +121,10 @@ public class DBManager {
                     Log.d(TAG,"LOG OUT");
                     mProfile = null;
                     mProfileReference = null;
+                    authenticated=false;
                     if(mListener!=null){
                         Log.d(TAG,"LOG OUT,,, listener: "+mListener.toString());
                         mListener.signedOut();
-                        authenticated=false;
                     }
                 }
             }
@@ -127,6 +132,18 @@ public class DBManager {
     }
 
     private void initListeners(String id){
+        DatabaseReference referencia = FirebaseDatabase.getInstance().getReference().child("users").child("user123").child("name");
+        referencia.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                dataSnapshot.getValue();
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
         DBroot.child(DB_USER_REFERENCE).child(id).child(DB_USER_GROUPS_REFERENCE).addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
@@ -212,9 +229,11 @@ public class DBManager {
                     groupMsgListener = new ChildEventListener() {
                         @Override
                         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                            if(dataSnapshot.exists()){
+                            if(dataSnapshot.exists() && dataSnapshot.getKey()!=lastMsgKey){
                                 Message msg = dataSnapshot.getValue(Message.class);
                                 if (msg!=null && mListener!=null){
+                                    Log.d(TAG," UN MSG RECIBIDO: ");
+                                    lastMsgKey = dataSnapshot.getKey();
                                     mListener.messageReceived(groupId,msg);
                                 }
                             }
@@ -421,11 +440,12 @@ public class DBManager {
             throw new RuntimeException(context.toString()
                     + " must implement DBManagerInteractions");
         }
-
-        if(authenticated)
-            mListener.signedIn();
-        else
-            mListener.signedOut();
+        if(authenticated != null) {
+            if (authenticated)
+                mListener.signedIn();
+            else
+                mListener.signedOut();
+        }
     }
 
     public void signIn(GoogleSignInAccount googlekey){
@@ -449,7 +469,7 @@ public class DBManager {
     }
 
     public boolean isAuthenticated(){
-        if(mUser!=null){
+        if(mUser!=null && authenticated!=null){
             return authenticated;
         }else{
             return false;
@@ -605,7 +625,7 @@ public class DBManager {
 
     public void initMsgList(final String groupId){
         final ArrayList<Message> result = new ArrayList<>();
-        Query query = DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).limitToFirst(15);
+        Query query = DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).limitToLast(15);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -626,8 +646,14 @@ public class DBManager {
         });
     }
 
+    public void sendMsg(String msg, String groupId){
+        DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg));
+
+    }
+
     public void setFilter(Group group, Boolean filter){
         mGroups.put(group,filter);
+        mListener.updateFilter();
     }
 
     public void updateGroup(Group group){
@@ -693,6 +719,6 @@ public class DBManager {
         void requestRemoved();
         void noProfileAvailable();
         void initMsgList(String groupId, ArrayList<Message> messages);
-
+        void updateFilter();
     }
 }

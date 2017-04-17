@@ -2,6 +2,7 @@ package es.udc.tfg.pruebafinalfirebase.Group;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -28,6 +29,8 @@ public class Groups_fragment extends Fragment {
     private Context context;
     private RecyclerView mRecyclerView;
     private GroupsRecyclerViewAdapter adapter;
+    private FloatingActionButton addGroupButton;
+    private OnGroupsFragmentInteractionListener mListener;
 
 
     public Groups_fragment() {
@@ -39,6 +42,18 @@ public class Groups_fragment extends Fragment {
     public void onAttach(Context context) {
         this.context = context;
         super.onAttach(context);
+        if (context instanceof OnGroupsFragmentInteractionListener) {
+            mListener = (OnGroupsFragmentInteractionListener) context;
+        } else {
+            throw new RuntimeException(context.toString()
+                    + " must implement OnGroupsFragmentIteractionListener");
+        }
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        mListener = null;
     }
 
     @Override
@@ -47,6 +62,8 @@ public class Groups_fragment extends Fragment {
         // Inflate the layout for this fragment
         View v = inflater.inflate(R.layout.fragment_groups_fragment, container, false);
         mRecyclerView = (RecyclerView) v.findViewById(R.id.groups_recyclerview);
+        addGroupButton = (FloatingActionButton) v.findViewById(R.id.add_group_button);
+
         return v;
     }
 
@@ -60,9 +77,20 @@ public class Groups_fragment extends Fragment {
         adapter = new GroupsRecyclerViewAdapter();
         mRecyclerView.setAdapter(adapter);
 
+        addGroupButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mListener.addGroup();
+            }
+        });
+
     }
 
     public void updateGroupList(){
         adapter.notifyDataSetChanged();
+    }
+
+    public interface OnGroupsFragmentInteractionListener {
+        public void addGroup();
     }
 }

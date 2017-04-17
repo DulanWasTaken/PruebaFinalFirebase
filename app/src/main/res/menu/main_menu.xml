@@ -19,9 +19,18 @@
         android:title="Filter"
         app:showAsAction="always"
         android:enabled="true"/>
+
     <item
-        android:id="@+id/action_log"
-        android:title="Sign in"
-        android:enabled="true"
-        app:showAsAction="never"/>
+        android:id="@+id/action_quickmsg"
+        android:icon="@drawable/ic_action_quickmsg"
+        android:title="Quick Message"
+        app:showAsAction="always"
+        android:enabled="true"/>
+
+    <item
+        android:id="@+id/action_quickMap"
+        android:icon="@android:drawable/ic_menu_mapmode"
+        android:title="Quick Map"
+        app:showAsAction="always"
+        android:enabled="true"/>
 </menu>

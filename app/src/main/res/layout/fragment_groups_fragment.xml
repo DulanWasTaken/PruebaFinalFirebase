@@ -1,8 +1,9 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="es.udc.tfg.pruebafinalfirebase.Group.Groups_fragment">
+    tools:context="es.udc.tfg.pruebafinalfirebase.Group.Groups_fragment"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/groups_recyclerview"
@@ -12,4 +13,14 @@
 
     </android.support.v7.widget.RecyclerView>
 
-</LinearLayout>
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/add_group_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|right"
+        android:elevation="15dp"
+        app:backgroundTint="@color/validate_green"
+        android:src="@android:drawable/ic_menu_add"
+        android:layout_margin="16dp"/>
+
+</android.support.design.widget.CoordinatorLayout>

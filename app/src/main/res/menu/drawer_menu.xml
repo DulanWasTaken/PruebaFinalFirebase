@@ -21,4 +21,12 @@
             android:title="Settings"
             android:id="@+id/drawer_settings"/>
     </group>
+
+    <group android:checkableBehavior="single"
+        android:id="@+id/drawer_log_group">
+        <item
+            android:icon="@android:drawable/ic_lock_power_off"
+            android:title="Log out"
+            android:id="@+id/drawer_logout"/>
+    </group>
 </menu>

@@ -107,7 +107,7 @@ public class EditGroupFragment extends Fragment {
         final RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(context);
         groupMembersRecyclerView.setLayoutManager(mLayoutManager);
         groupMembersRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
-        groupMembersRecyclerView.setAdapter(new GroupMemberRecyclerViewAdapter(group.getMembersId(),groupId));
+        groupMembersRecyclerView.setAdapter(new GroupMemberRecyclerViewAdapter(group,groupId));
 
         editNameButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -121,6 +121,12 @@ public class EditGroupFragment extends Fragment {
             }
         });
 
+        if(!group.getAdmins().contains(dbManager.getId())){
+            addMemberButton.setVisibility(View.INVISIBLE);
+        } else if (group.getAdmins().size()==1) {
+            exitGroupButton.setText("Delete Group");
+        }
+
         addMemberButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -131,6 +137,11 @@ public class EditGroupFragment extends Fragment {
         exitGroupButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if(exitGroupButton.getText().toString().equals("Delete Group")){
+                    for(GroupMember member : group.getMembersId()){
+                        dbManager.removeMember(groupId,member.getMemberId());
+                    }
+                }
                 dbManager.exitGroup(group.getId());
                 getFragmentManager().popBackStack();
             }

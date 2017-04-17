@@ -25,6 +25,7 @@ import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
 
 public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMemberRecyclerViewAdapter.ViewHolder> {
     private ArrayList<GroupMember> mDataset;
+    private ArrayList<String> admins;
     private Context context;
     private String TAG = "GroupMemberRecyclerViewAdapter";
     private Drawable ic_contact;
@@ -49,8 +50,9 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
         }
     }
 
-    public GroupMemberRecyclerViewAdapter(ArrayList<GroupMember> myDataset,String groupId) {
-        mDataset = myDataset;
+    public GroupMemberRecyclerViewAdapter(Group mGroup,String groupId) {
+        mDataset = mGroup.getMembersId();
+        admins = mGroup.getAdmins();
         this.groupId = groupId;
         dbManager = DBManager.getInstance();
     }
@@ -73,6 +75,10 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
     public void onBindViewHolder(GroupMemberRecyclerViewAdapter.ViewHolder holder, final int position) {
         GroupMember member = mDataset.get(position);
         holder.name.setText(member.getNick());
+        if(!admins.contains(member.getMemberId())) {
+            holder.admin.setVisibility(View.INVISIBLE);
+            holder.deleteButton.setVisibility(View.INVISIBLE);
+        }
         holder.deleteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

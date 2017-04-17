@@ -14,6 +14,7 @@ import android.widget.EditText;
 import java.util.ArrayList;
 
 import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Group.GroupMember;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.SimpleDividerItemDecoration;
 
@@ -31,7 +32,7 @@ public class MessagesFragment extends Fragment {
     private msgRecyclerViewAdapter adapter;
     private EditText msgEditText;
     private Button msgButton;
-
+    private DBManager dbManager;
 
 
     public MessagesFragment() {
@@ -53,6 +54,7 @@ public class MessagesFragment extends Fragment {
         if (getArguments() != null) {
             groupId = getArguments().getString(ARG_PARAM1);
         }
+        dbManager = DBManager.getInstance();
     }
 
     @Override
@@ -80,7 +82,18 @@ public class MessagesFragment extends Fragment {
         msgRecyclerView.setLayoutManager(mLayoutManager);
         msgRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
 
-        DBManager.getInstance().initMsgList(groupId);
+        dbManager.initMsgList(groupId);
+
+        msgButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String msg = msgEditText.getText().toString();
+                if(!msg.equals("")){
+                    dbManager.sendMsg(msg,groupId);
+                }
+                msgEditText.setText("");
+            }
+        });
     }
 
     public void initList(ArrayList<Message> messages){

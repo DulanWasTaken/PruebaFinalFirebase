@@ -18,13 +18,13 @@
         <EditTextPreference
             android:key="edittext_preference"
             android:title="edittext_preference"
-            android:summary="summary_edittext_preference"
+            android:summary="ñladkfj"
             android:dialogTitle="dialog_title_edittext_preference" />
 
         <ListPreference
             android:key="list_preference"
             android:title="title_list_preference"
-            android:summary="summary_list_preference"
+            android:summary="%s"
             android:entries="@array/testarray"
             android:entryValues="@array/testarray2"
             android:dialogTitle="dialog_title_list_preference" />

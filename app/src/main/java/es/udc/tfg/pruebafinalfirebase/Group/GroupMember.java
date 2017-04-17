@@ -36,7 +36,7 @@ public class GroupMember {
         this.state = state;
     }
 
-    public void setConction(){
+    public void setConection(){
         this.lastConection = System.currentTimeMillis();
     }
 

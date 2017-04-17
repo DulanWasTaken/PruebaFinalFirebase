@@ -38,8 +38,6 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
     }
 
     public FilterRecyclerViewAdapter(){
-        mDatasetGroups = new ArrayList<Group>(DBManager.mGroups.keySet());
-        mDatasetFilter = new ArrayList<Boolean>(DBManager.mGroups.values());
         dbManager = DBManager.getInstance();
     }
 
@@ -67,6 +65,9 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
     @Override
     public void onBindViewHolder(FilterRecyclerViewAdapter.ViewHolder holder, final int position) {
 
+        mDatasetGroups = new ArrayList<Group>(DBManager.mGroups.keySet());
+        mDatasetFilter = new ArrayList<Boolean>(DBManager.mGroups.values());
+
         final Group group = mDatasetGroups.get(position);
         final String groupName = group.getName();
         final Boolean filtered = mDatasetFilter.get(position);
@@ -82,8 +83,10 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
         holder.button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                dbManager.setFilter(group,!filtered);
-                if(filtered)
+                ArrayList<Boolean> mDatasetFilter2 = new ArrayList<Boolean>(DBManager.mGroups.values());
+                Boolean filtered2 = mDatasetFilter2.get(position);
+                dbManager.setFilter(group,!filtered2);
+                if(filtered2)
                     b.setBackground(but_unchecked);
                 else
                     b.setBackground(but_checked);

@@ -36,6 +36,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -54,14 +55,17 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import es.udc.tfg.pruebafinalfirebase.Group.EditGroupFragment;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
@@ -71,11 +75,12 @@ import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Messages.MessagesFragment;
 import es.udc.tfg.pruebafinalfirebase.Filter.FilterRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Filter.Filter_fragment;
+import es.udc.tfg.pruebafinalfirebase.Messages.QuickMsgFragment;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
-public class MainActivity extends AppCompatActivity implements DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback,FirebaseBackgroundListeners.OnServiceInteractionListener {
+public class MainActivity extends AppCompatActivity implements Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener {
 
     private String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -85,6 +90,8 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     public static final String EDIT_GROUP_FRAGMENT_TAG = "EDIT_GROUP_FRAGMENT_TAG";
     public static final String MESSAGES_FRAGMENT_TAG = "MESSAGES_FRAGMENT_TAG";
     public static final String SETTINGS_FRAGMENT_TAG = "SETTINGS_FRAGMENT_TAG";
+    public static final String QUICKMSG_FRAGMENT_TAG = "QUICKMSG_FRAGMENT_TAG";
+    public static final String LOGIN_FRAGMENT_TAG = "LOGIN_FRAGMENT_TAG";
     public static final int RC_SIGN_IN = 777;
     public static final int RC_PHONE_CONTACTS = 888;
     public static final int RC_EMAIL_CONTACTS = 999;
@@ -107,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     private FloatingActionButton locationFab,autoZoomFab;
     private DrawerLayout mDrawerLayout;
     private NavigationView navigationView;
-    private MenuItem menuItemLog,menuItemShare,menuItemNotif,menuItemFilter;
+    private MenuItem menuItemShare,menuItemNotif,menuItemFilter,menuItemQuickmsg,menuItemQuickmap;
     private Button notifications;
     private Menu menu;
     private Dialog pb;
@@ -116,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     public FragmentManager fragmentManager;
     public SharedPreferences pref;
 
-    private FirebaseBackgroundListeners mService;
+    private es.udc.tfg.pruebafinalfirebase.mService mService;
     private ServiceConnection mConnection;
     private boolean mBound;
 
@@ -168,13 +175,12 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
             @Override
             public void onServiceConnected(ComponentName className, IBinder service) {
-                FirebaseBackgroundListeners.LocalBinder binder = (FirebaseBackgroundListeners.LocalBinder) service;
+                es.udc.tfg.pruebafinalfirebase.mService.LocalBinder binder = (es.udc.tfg.pruebafinalfirebase.mService.LocalBinder) service;
                 mService = binder.getService();
                 mBound = true;
                 mService.registerClient(MainActivity.this);
 
                 locationFab.setEnabled(true);
-                initView();
             }
 
             @Override
@@ -215,6 +221,9 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
                     case R.id.drawer_settings:
                         setSettingsFragment();
                         break;
+                    case R.id.drawer_logout:
+                        logout();
+                        break;
                 }
                 return true;
             }
@@ -253,7 +262,7 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
                 }
                 if(!empty) {
                     LatLngBounds bounds = builder.build();
-                    mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 200));
+                    mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 500));
                 }
 
             }
@@ -261,17 +270,17 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
         /***********************  COMPROBAR ESTADO DE AUTENTICACIÓN **************************/
         if(!myServiceRunning)
-            startService(new Intent(MainActivity.this,FirebaseBackgroundListeners.class));
+            startService(new Intent(MainActivity.this, es.udc.tfg.pruebafinalfirebase.mService.class));
         dbManager.bindDBManager(MainActivity.this);
+
+        MapsInitializer.initialize(getApplicationContext());
     }
 
     @Override
     protected void onStart(){
         super.onStart();
-        if (myProfileCreated) {
-            Intent intent = new Intent(this, FirebaseBackgroundListeners.class);
-            bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
-        }
+        Intent intent = new Intent(this, es.udc.tfg.pruebafinalfirebase.mService.class);
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
@@ -293,41 +302,37 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     }
 
     private void setLoginFragment(){
-        if (menu != null){
-            menuItemShare.setVisible(false);
-            menuItemNotif.setVisible(false);
-            menuItemFilter.setVisible(false);
-            menuItemLog.setTitle("Sign in");
-        }
+        ab.hide();
 
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
 
-        ab.setDisplayHomeAsUpEnabled(false);
-
-        Fragment fragment  = fragmentManager.findFragmentById(R.id.map_fragment_content);
-        if(fragment!=null){
-            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-            fragmentTransaction.remove(fragment);
-            fragmentTransaction.commit();
-        }
-
+        LoginFragment loginFragment = new LoginFragment();
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(R.id.map_fragment_content,loginFragment,LOGIN_FRAGMENT_TAG);
+        Fragment filter = fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
+        if(filter!=null)
+            transaction.remove(filter);
+        transaction.commit();
         pb.cancel();
     }
 
     private void setMapFragment(){
         if (menu != null){
-            menuItemLog.setEnabled(true);
             menuItemShare.setEnabled(true);
             menuItemNotif.setEnabled(true);
             menuItemShare.setVisible(true);
             menuItemNotif.setVisible(true);
             menuItemFilter.setVisible(true);
-            menuItemLog.setTitle("Sign out");
+            menuItemQuickmsg.setEnabled(true);
+            menuItemQuickmsg.setVisible(true);
+            menuItemQuickmap.setEnabled(false);
+            menuItemQuickmap.setVisible(false);
         }
         locationFab.setVisibility(View.VISIBLE);
         autoZoomFab.setVisibility(View.VISIBLE);
 
+        ab.show();
         ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
         ab.setDisplayHomeAsUpEnabled(true);
         ab.setTitle("W'U");
@@ -345,12 +350,15 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
     private void setGroupsFragment(){
         if (menu != null){
-            menuItemLog.setEnabled(true);
-            menuItemShare.setEnabled(true);
-            menuItemNotif.setEnabled(true);
-            menuItemShare.setVisible(true);
-            menuItemNotif.setVisible(true);
+            menuItemShare.setEnabled(false);
+            menuItemNotif.setEnabled(false);
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
             menuItemFilter.setVisible(false);
+            menuItemQuickmsg.setEnabled(false);
+            menuItemQuickmsg.setVisible(false);
+            menuItemQuickmap.setEnabled(false);
+            menuItemQuickmap.setVisible(false);
         }
         locationFab.setVisibility(View.GONE);
         autoZoomFab.setVisibility(View.GONE);
@@ -374,13 +382,15 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
     private void setEditGroupFragment(String groupId){
         if (menu != null){
-            menuItemLog.setEnabled(false);
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
             menuItemShare.setVisible(false);
             menuItemNotif.setVisible(false);
             menuItemFilter.setVisible(false);
-            menuItemLog.setTitle("Sign out");
+            menuItemQuickmsg.setEnabled(false);
+            menuItemQuickmsg.setVisible(false);
+            menuItemQuickmap.setEnabled(false);
+            menuItemQuickmap.setVisible(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
@@ -399,13 +409,15 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
     private void setMessagesFragment(String groupId){
         if (menu != null){
-            menuItemLog.setEnabled(false);
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
             menuItemShare.setVisible(false);
             menuItemNotif.setVisible(false);
             menuItemFilter.setVisible(false);
-            menuItemLog.setTitle("Sign out");
+            menuItemQuickmsg.setEnabled(false);
+            menuItemQuickmsg.setVisible(false);
+            menuItemQuickmap.setEnabled(true);
+            menuItemQuickmap.setVisible(true);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
@@ -424,18 +436,20 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
     private void setSettingsFragment(){
         if (menu != null){
-            menuItemLog.setEnabled(false);
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
             menuItemShare.setVisible(false);
             menuItemNotif.setVisible(false);
             menuItemFilter.setVisible(false);
-            menuItemLog.setTitle("Sign out");
+            menuItemQuickmsg.setEnabled(false);
+            menuItemQuickmsg.setVisible(false);
+            menuItemQuickmap.setEnabled(false);
+            menuItemQuickmap.setVisible(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
 
-        ab.setDisplayHomeAsUpEnabled(false);
+        ab.setDisplayHomeAsUpEnabled(true);
 
         SettingsFragment settingsFragment = new SettingsFragment();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -528,7 +542,9 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
 
         final MarkerOptions options = new MarkerOptions()
                 .position(new LatLng(location.getLat(), location.getLng()))
-                .title(nick);
+                .title(nick)
+                .icon(BitmapDescriptorFactory.defaultMarker(Utils.stringToHueColor(groupId)));
+
 
         if (index >= 0){
             MapMarker m = mapMarkers.get(index);
@@ -564,6 +580,55 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         return -1;
     }
 
+    private String groupIdMarker(String markerId){
+        for (MapMarker m : mapMarkers){
+            if (m.getMarker().getId().equals(markerId)){
+                return m.getGroupId();
+            }
+        }
+        return null;
+    }
+
+    /******************************** LOGIN FRAGMENT METHODS ************************************/
+
+    @Override
+    public void signInButtonClicked(){
+        login();
+    }
+
+    /*************************** QUICK MESSAGE FRAGMENT METHODS ********************************/
+
+    @Override
+    public void quickMsgSent(){
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+
+        String groups = "";
+        for(Map.Entry<Group,Boolean> entry : DBManager.mGroups.entrySet()){
+            if(entry.getValue()) {
+                groups = groups + entry.getKey().getName();
+                groups = groups + ", ";
+            }
+        }
+        if(groups.equals(""))
+            Snackbar.make(view, "No groups selected", Snackbar.LENGTH_SHORT).show();
+        else{
+            groups = groups.substring(0, groups.length() - 3);
+            Snackbar.make(view, "Message sent to "+groups, Snackbar.LENGTH_LONG).show();
+        }
+
+    }
+
+    /******************************* GROUPS FRAGMENT METHODS ***********************************/
+
+    @Override
+    public void addGroup(){
+        checkPermissions(RC_CREATE_GROUP);
+    }
+
     /************************** GROUPS RECYCLER VIEW ADAPTER METHODS ***************************/
     @Override
     public void groupSelected(String groupId){
@@ -582,22 +647,6 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         checkPermissions(RC_ADD_MEMBER);
     }
 
-
-    /************************** FILTER RECYCLER VIEW METHODS *******************************/
-
-    @Override
-    public void updateFilter(){
-
-        for(MapMarker marker : mapMarkers){
-            Marker aux = marker.getMarker();
-            if(aux!=null && !marker.getGroupId().equals("")) {
-                Boolean bool = DBManager.mGroups.get(dbManager.findGroupById(marker.getGroupId()));
-                Toast.makeText(this,"active? "+bool,Toast.LENGTH_SHORT).show();
-                aux.setVisible(bool && marker.isActive());
-                marker.setMarker(aux);
-            }
-        }
-    }
 
     /****************************** SERVICE METHODS *****************************************/
 
@@ -626,7 +675,7 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         Log.d(TAG,"DBMANAGER: signed in:  "+dbManager.isAuthenticated());
         pref.edit().putBoolean("profileCreated",true);
         if(!mBound){
-            Intent intent = new Intent(this, FirebaseBackgroundListeners.class);
+            Intent intent = new Intent(this, es.udc.tfg.pruebafinalfirebase.mService.class);
             bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
         }
         initView();
@@ -665,21 +714,23 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         final String userId = msg.getSender().getMemberId();
         if(fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG)!=null){
             int position = findMarker(userId,groupId);
-            final Marker marker = mapMarkers.get(position).getMarker();
-            if (position>=0) {
-                marker.setSnippet(msg.getMsg());
-                marker.showInfoWindow();
+            if (position < mapMarkers.size()) {
+                if (position >= 0) {
+                    final Marker marker = mapMarkers.get(position).getMarker();
+                    marker.setSnippet(msg.getMsg());
+                    marker.showInfoWindow();
 
-                new CountDownTimer(5000, 5000) {
+                    new CountDownTimer(5000, 5000) {
 
-                    public void onTick(long millisUntilFinished) {
+                        public void onTick(long millisUntilFinished) {
 
-                    }
+                        }
 
-                    public void onFinish() {
-                        marker.hideInfoWindow();
-                    }
-                }.start();
+                        public void onFinish() {
+                            marker.hideInfoWindow();
+                        }
+                    }.start();
+                }
             }
         }
         else{
@@ -748,6 +799,20 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         }
     }
 
+    @Override
+    public void updateFilter(){
+
+        for(MapMarker marker : mapMarkers){
+            Marker aux = marker.getMarker();
+            if(aux!=null && !marker.getGroupId().equals("")) {
+                Boolean bool = DBManager.mGroups.get(dbManager.findGroupById(marker.getGroupId()));
+                Log.d(TAG, "isActive? " +bool);
+                aux.setVisible(bool && marker.isActive());
+                marker.setMarker(aux);
+            }
+        }
+    }
+
     /****************************** GOOGLE MAPS METHODS **************************************/
 
     @Override
@@ -755,6 +820,13 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
         mGoogleMap = googleMap;
         googleMap.setOnMapLoadedCallback(this);
         googleMap.getUiSettings().setMapToolbarEnabled(false);
+
+        mGoogleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            @Override
+            public void onInfoWindowClick(Marker marker) {
+                setMessagesFragment(groupIdMarker(marker.getId()));
+            }
+        });
 
     }
 
@@ -799,6 +871,11 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
             setGroupsFragment();
 
         ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
     }
 
     @Override
@@ -912,19 +989,22 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     public boolean onCreateOptionsMenu(Menu menu) {
         this.menu = menu;
         getMenuInflater().inflate(R.menu.main_menu,menu);
-        menuItemLog = menu.findItem(R.id.action_log);
         menuItemShare = menu.findItem(R.id.action_share);
         menuItemNotif = menu.findItem(R.id.action_notifications);
         menuItemFilter = menu.findItem(R.id.action_filter);
-        if(dbManager.isAuthenticated())
-            menuItemLog.setTitle("Sign out");
+        menuItemQuickmsg = menu.findItem(R.id.action_quickmsg);
+        menuItemQuickmap = menu.findItem(R.id.action_quickMap);
+        menuItemQuickmap.setVisible(false);
+
+        /*if(dbManager.isAuthenticated())
+
         else {
             menuItemShare.setVisible(false);
             menuItemNotif.setVisible(false);
             menuItemFilter.setVisible(false);
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
-        }
+        }*/
         MenuItemCompat.setActionView(menu.findItem(R.id.action_notifications), R.layout.notification_badge);
         View count = menu.findItem(R.id.action_notifications).getActionView();
         notifications = (Button) count.findViewById(R.id.notif);
@@ -957,13 +1037,13 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.action_log:
+            /*case R.id.action_log:
                 pb.show();
                 if(menuItemLog.getTitle().toString().equals("Sign in"))
                     login();
                 else if(menuItemLog.getTitle().toString().equals("Sign out"))
                     logout();
-                return true;
+                return true;*/
             case R.id.action_share:
                 checkPermissions(RC_CREATE_GROUP);
                 return true;
@@ -989,6 +1069,38 @@ public class MainActivity extends AppCompatActivity implements DBManager.DBManag
                     transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
                     transaction.commit();
                 }
+                return true;
+            case R.id.action_quickmsg:
+                FragmentTransaction qmTransaction = fragmentManager.beginTransaction();
+                qmTransaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
+                Filter_fragment existingFilter = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
+                QuickMsgFragment existingQuickmsg = (QuickMsgFragment) fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);
+                if(existingQuickmsg != null) {
+                    qmTransaction.remove(existingFilter);
+                    if (existingFilter!=null){
+                        qmTransaction.remove(existingFilter);
+                    }
+                    qmTransaction.commit();
+                    fragmentManager.popBackStack();
+                    View view = this.getCurrentFocus();
+                    if (view != null) {
+                        InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                    }
+                } else {
+                    if (existingFilter==null){
+                        Filter_fragment newFilter = new Filter_fragment();
+                        qmTransaction.add(R.id.filter_fragment_content,newFilter,FILTER_FRAGMENT_TAG);
+                    }
+                    QuickMsgFragment newQuickMsg = new QuickMsgFragment();
+                    qmTransaction.add(R.id.quickMsg_fragment_content,newQuickMsg,QUICKMSG_FRAGMENT_TAG);
+                    qmTransaction.addToBackStack(QUICKMSG_FRAGMENT_TAG);
+                    qmTransaction.commit();
+                }
+                return true;
+            case R.id.action_quickMap:
+                fragmentManager.popBackStack();
+                setMapFragment();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

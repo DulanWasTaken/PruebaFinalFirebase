@@ -57,6 +57,13 @@
 
                 <FrameLayout
                     android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/filter_fragment_content"
+                    android:id="@+id/quickMsg_fragment_content">
+                </FrameLayout>
+
+                <FrameLayout
+                    android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_centerVertical="true"
                     android:layout_centerHorizontal="true"
