@@ -5,7 +5,8 @@ android {
     buildToolsVersion '25.0.2'
     defaultConfig {
         applicationId "es.udc.tfg.pruebafinalfirebase"
-        minSdkVersion 19
+        minSdkVersion 17
+
         targetSdkVersion 25
         versionCode 1
         versionName "1.0"
@@ -25,6 +26,8 @@ dependencies {
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
+    //There are bugs with google preference support styles, using this bugfix library
+    //compile 'com.takisoft.fix:preference-v7:25.3.1.0'
     compile 'com.google.firebase:firebase-database:10.2.0'
     compile 'com.google.firebase:firebase-auth:10.2.0'
     compile 'com.google.firebase:firebase-invites:10.2.0'
@@ -36,8 +39,6 @@ dependencies {
     compile 'com.android.support:cardview-v7:25.3.1'
     compile 'com.android.support:support-v4:25.3.1'
     compile 'com.android.support:preference-v7:25.3.1'
-    //There are bugs with google preference support styles, using this bugfix library
-    //compile 'com.takisoft.fix:preference-v7:25.3.1.0'
     testCompile 'junit:junit:4.12'
 }
 

@@ -1,6 +1,7 @@
 package es.udc.tfg.pruebafinalfirebase;
 
 import android.content.Context;
+import android.media.audiofx.AudioEffect;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
@@ -40,6 +41,7 @@ public class DBManager {
     private static final String DB_USER_LOCATION_REFERENCE = "location";
     private static final String DB_USER_REQUEST_REFERENCE = "request";
     private static final String DB_USER_GROUPS_REFERENCE = "groupsId";
+    private static final String DB_USER_INTERESTPOINTS_REF = "interestPoints";
     private static final String DB_GROUPS_REFERENCE = "groups";
     private static final String DB_GROUPS_MEMBERS_REFERENCE = "membersId";
     private static final String DB_MESSAGES_REFERENCE = "messages";
@@ -497,8 +499,12 @@ public class DBManager {
 
         DBroot.child(DB_PUBLICID_REFERENCE).child(email).setValue(requestPath);
         DBroot.child(DB_PUBLICID_REFERENCE).child(phone).setValue(requestPath);
-        User newProfile = new User(email,"",mUser.getUid(),phone,nick,new Location(),new ArrayList<InterestPoint>(),"",new ArrayList<String>(),requestPath);
+        User newProfile = new User(email,"",mUser.getUid(),phone,nick,new Location(),"",new ArrayList<String>(),requestPath);
         DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).setValue(newProfile);
+    }
+
+    public User getProfile(){
+        return mProfile;
     }
 
     public ArrayList<Request> getPendingRequests(){
@@ -646,8 +652,12 @@ public class DBManager {
         });
     }
 
-    public void sendMsg(String msg, String groupId){
-        DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg));
+    public void sendMsg(String msg, String groupId,int type,InterestPoint interestPoint){
+        Log.d(TAG,"sending "+interestPoint.toString()+" interest point");
+        if(interestPoint == null)
+            DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg,type));
+        else
+            DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg,interestPoint.getIpId(),interestPoint.getUserId(),type));
 
     }
 
@@ -707,6 +717,41 @@ public class DBManager {
         DBroot.child(DB_GROUPS_REFERENCE).child(groupId).setValue(group);
     }
 
+    /*********************************** INTEREST POINTS METHODS ******************************************/
+
+    public void createInterestPoint(String name, String description, double lat, double lng){
+        DatabaseReference iPref = mProfileReference.child(DB_USER_INTERESTPOINTS_REF).push();
+        iPref.setValue(new InterestPoint(lat,lng,name,description,mUser.getUid(),iPref.getKey()));
+    }
+
+    public InterestPoint getInterestPoint(final String userId, final String ipId){
+        InterestPoint point = mProfile.getInterestPoints().get(ipId);
+        if(point!=null)
+            return point;
+        DBroot.child(DB_USER_REFERENCE).child(userId).child(DB_USER_INTERESTPOINTS_REF).child(ipId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                mListener.initInterestPoint(dataSnapshot.getValue(InterestPoint.class),userId,ipId);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+        return null;
+    }
+
+    public void saveInterestPoint(String ipId, String name, String description){
+        DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_INTERESTPOINTS_REF).child(ipId).child("name").setValue(name);
+        DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_INTERESTPOINTS_REF).child(ipId).child("description").setValue(description);
+    }
+
+    public void rateInterestPoint(String userId, String ipId, Float rate){
+        DBroot.child(DB_USER_REFERENCE).child(userId).child(DB_USER_INTERESTPOINTS_REF).child(ipId).child("rating").child(mUser.getUid()).setValue(rate);
+
+    }
+
     /*********************************** COMMUNICATION INTERFACE ******************************************/
 
     public interface DBManagerInteractions{
@@ -720,5 +765,6 @@ public class DBManager {
         void noProfileAvailable();
         void initMsgList(String groupId, ArrayList<Message> messages);
         void updateFilter();
+        void initInterestPoint(InterestPoint interestPoint,String userId, String ipId);
     }
 }

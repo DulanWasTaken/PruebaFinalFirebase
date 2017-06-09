@@ -17,6 +17,7 @@ import java.util.Map;
 
 import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.R;
 
 /**
@@ -32,6 +33,7 @@ public class QuickMsgFragment extends Fragment {
     private EditText msgEditText;
     private ImageButton msgSendMsg;
     private DBManager dbManager = DBManager.getInstance();
+    private InterestPoint sendingIp;
 
     public QuickMsgFragment() {
         // Required empty public constructor
@@ -76,15 +78,37 @@ public class QuickMsgFragment extends Fragment {
         msgSendMsg.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                Log.d(TAG,"sending "+sendingIp);
                 for(Map.Entry<Group,Boolean> entry : DBManager.mGroups.entrySet()){
-                    Log.d(TAG,entry.getKey().getName()+": "+entry.getValue());
-                    if (entry.getValue() && !msgEditText.getText().toString().equals(""))
-                        dbManager.sendMsg(msgEditText.getText().toString(),entry.getKey().getId());
+                    //Log.d(TAG,entry.getKey().getName()+": "+entry.getValue());
+                    if (entry.getValue() && !msgEditText.getText().toString().equals("")){
+                        if(sendingIp == null)
+                            dbManager.sendMsg(msgEditText.getText().toString(),entry.getKey().getId(),Message.TYPE_TEXT,null);
+                        else
+                            dbManager.sendMsg(msgEditText.getText().toString(),entry.getKey().getId(),Message.TYPE_IP,sendingIp);
+                    }
                 }
                 mListener.quickMsgSent();
                 getFragmentManager().popBackStack();
             }
         });
+    }
+
+    public void addIp(InterestPoint interestPoint){
+        String text = msgEditText.getText().toString();
+        if(sendingIp == interestPoint){
+            sendingIp = null;
+            text = text.substring(text.indexOf("]")+1,text.length());
+            msgEditText.setText(text);
+            msgEditText.setSelection(text.length());
+        }else{
+            sendingIp = interestPoint;
+            if(text.startsWith("["))
+                text = text.substring(text.indexOf("]")+1,text.length());
+            text = "["+interestPoint.getName()+"]"+text;
+            msgEditText.setText(text);
+            msgEditText.setSelection(text.length());
+        }
     }
 
     public interface OnQuickMsgFragmentInteractionListener {

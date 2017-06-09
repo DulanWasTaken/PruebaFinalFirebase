@@ -1,34 +1,46 @@
 package es.udc.tfg.pruebafinalfirebase;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by Usuario on 18/12/2016.
  */
 
 public class InterestPoint {
-    private Location location;
+    private double lat,lng;
     private String name;
     private String description;
-    private ArrayList<Integer> rating;
+    private String userId,ipId;
+    private HashMap<String,Float> rating;
 
     public InterestPoint (){
 
     }
 
-    public InterestPoint(Location location, String name, ArrayList<Integer> rating, String description) {
-        this.location = location;
+    public InterestPoint(double lat, double lng, String name, String description, String userId, String ipId) {
+        this.lat = lat;
+        this.lng = lng;
         this.name = name;
-        this.rating = rating;
         this.description = description;
+        this.userId = userId;
+        this.ipId = ipId;
     }
 
-    public Location getLocation() {
-        return location;
+    public double getLat() {
+        return lat;
     }
 
-    public void setLocation(Location location) {
-        this.location = location;
+    public void setLat(double lat) {
+        this.lat = lat;
+    }
+
+    public double getLng() {
+        return lng;
+    }
+
+    public void setLng(double lng) {
+        this.lng = lng;
     }
 
     public String getName() {
@@ -47,11 +59,19 @@ public class InterestPoint {
         this.description = description;
     }
 
-    public ArrayList<Integer> getRating() {
+    public HashMap<String, Float> getRating() {
         return rating;
     }
 
-    public void addRating(Integer rating) {
-        this.rating.add(rating);
+    public void setRating(HashMap<String, Float> rating) {
+        this.rating = rating;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getIpId() {
+        return ipId;
     }
 }

@@ -80,7 +80,7 @@ import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
-public class MainActivity extends AppCompatActivity implements Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener {
+public class MainActivity extends AppCompatActivity implements Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener, GoogleMap.OnMarkerClickListener {
 
     private String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -92,6 +92,7 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
     public static final String SETTINGS_FRAGMENT_TAG = "SETTINGS_FRAGMENT_TAG";
     public static final String QUICKMSG_FRAGMENT_TAG = "QUICKMSG_FRAGMENT_TAG";
     public static final String LOGIN_FRAGMENT_TAG = "LOGIN_FRAGMENT_TAG";
+    public static final String IP_FRAGMENT_TAG = "IP_FRAGMENT_TAG";
     public static final int RC_SIGN_IN = 777;
     public static final int RC_PHONE_CONTACTS = 888;
     public static final int RC_EMAIL_CONTACTS = 999;
@@ -101,6 +102,10 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
     public static final int RC_ADD_MEMBER = 2;
     public static final int PERMISSION_REQUEST_READ_CONTACTS = 333;
     public static final int PERMISSION_REQUEST_LOCATION = 222;
+    public static final String MARKER_TAG_CHAT_TEXT = "chat/text";
+    public static final String MARKER_TAG_CHAT_IP = "chat/ip";
+    public static final String MARKER_TAG_IP = "ip/main";
+    public static final String MARKER_TAG_LOCATION = "location/main";
     public boolean myLocationEnabled = false;
     public boolean mapLoaded=false;
     public boolean myProfileCreated = false;
@@ -109,6 +114,8 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
     /*public ArrayList<String> myFilteredGroups = new ArrayList<>();
     public HashMap<String,Marker> markersHM = new HashMap<String,Marker>();*/
     private ArrayList<MapMarker> mapMarkers = new ArrayList<>();
+    private ArrayList<Marker> ipMapMarkers = new ArrayList<>();
+    private boolean ipState = false;
 
     private RelativeLayout main_content;
     private FloatingActionButton locationFab,autoZoomFab;
@@ -130,6 +137,7 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
     private GoogleApiClient mGoogleAuthApiClient;
     private GoogleSignInOptions gso;
     private GoogleMap mGoogleMap;
+    private String drawerFlag = "";
 
     private DBManager dbManager = DBManager.getInstance();
 
@@ -210,21 +218,25 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
             public boolean onNavigationItemSelected(MenuItem menuItem) {
                 menuItem.setChecked(true);
                 mDrawerLayout.closeDrawers();
-
                 switch (menuItem.getItemId()){
                     case R.id.drawer_map:
                         setMapFragment();
+                        drawerFlag = MAP_FRAGMENT_TAG;
                         break;
                     case R.id.drawer_groups:
                         setGroupsFragment();
+                        drawerFlag = GROUPS_FRAGMENT_TAG;
                         break;
                     case R.id.drawer_settings:
                         setSettingsFragment();
+                        drawerFlag = SETTINGS_FRAGMENT_TAG;
                         break;
                     case R.id.drawer_logout:
                         logout();
+                        drawerFlag = LOGIN_FRAGMENT_TAG;
                         break;
                 }
+                Log.d(TAG,"MAP FRAGMENT IS "+drawerFlag);
                 return true;
             }
         });
@@ -262,7 +274,7 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
                 }
                 if(!empty) {
                     LatLngBounds bounds = builder.build();
-                    mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 500));
+                    mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 200));
                 }
 
             }
@@ -337,7 +349,7 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
         ab.setDisplayHomeAsUpEnabled(true);
         ab.setTitle("W'U");
 
-        if(fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG)==null) {
+        if(!drawerFlag.equals(MAP_FRAGMENT_TAG)) {
             SupportMapFragment mMapFragment = SupportMapFragment.newInstance();
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
             fragmentTransaction.replace(R.id.map_fragment_content, mMapFragment, MAP_FRAGMENT_TAG);
@@ -367,7 +379,7 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
         ab.setDisplayHomeAsUpEnabled(true);
         ab.setTitle("Groups");
 
-        if(fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG)==null) {
+        if(!drawerFlag.equals(GROUPS_FRAGMENT_TAG)) {
             Groups_fragment groupsFragment = new Groups_fragment();
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
             fragmentTransaction.replace(R.id.map_fragment_content, groupsFragment, GROUPS_FRAGMENT_TAG);
@@ -434,6 +446,33 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
         pb.cancel();
     }
 
+    private void setIpFragment(String userId, String ipId){
+        if (menu != null){
+            menuItemShare.setEnabled(false);
+            menuItemNotif.setEnabled(false);
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
+            menuItemFilter.setVisible(false);
+            menuItemQuickmsg.setEnabled(false);
+            menuItemQuickmsg.setVisible(false);
+            menuItemQuickmap.setEnabled(true);
+            menuItemQuickmap.setVisible(true);
+        }
+        locationFab.setVisibility(View.INVISIBLE);
+        autoZoomFab.setVisibility(View.INVISIBLE);
+
+        ab.setDefaultDisplayHomeAsUpEnabled(true);
+        ab.setHomeAsUpIndicator(R.drawable.ic_action_arrow_back);
+
+        InterestPointFragment ipFragment = InterestPointFragment.newInstance(ipId,userId);
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.replace(R.id.map_fragment_content, ipFragment, IP_FRAGMENT_TAG+userId+ipId);
+        fragmentTransaction.addToBackStack(null);
+        fragmentTransaction.commit();
+
+        pb.cancel();
+    }
+
     private void setSettingsFragment(){
         if (menu != null){
             menuItemShare.setEnabled(false);
@@ -456,7 +495,6 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
         fragmentTransaction.replace(R.id.map_fragment_content, settingsFragment, SETTINGS_FRAGMENT_TAG);
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
-
         pb.cancel();
     }
 
@@ -536,7 +574,6 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
 
     private void locationChanged(Location location, String userId,String nick, String groupId){
         Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+userId+"       "+groupId+"   ACTIVE?"+location.isActive());
-        Fragment mapFragment = fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG);
 
         int index = findMarker(userId,groupId);
 
@@ -554,14 +591,14 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
             if (marker!= null){
                 marker.setPosition(new LatLng(location.getLat(), location.getLng()));
                 marker.setVisible(m.isActive()&& dbManager.isFiltered(groupId));
-            }else if (mapFragment!=null && mGoogleMap!=null){
+            }else if (drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap!=null){
                 Marker newMarker = mGoogleMap.addMarker(options);
                 newMarker.setVisible(m.isActive()&& dbManager.isFiltered(groupId));
                 m.setMarker(newMarker);
             }
 
         }else{
-            if(mGoogleMap!=null && mapFragment!=null){
+            if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
                 Marker newMarker = mGoogleMap.addMarker(options);
                 newMarker.setVisible(location.isActive() && dbManager.isFiltered(groupId));
                 mapMarkers.add(new MapMarker(newMarker,options, userId, groupId, MapMarker.LOCATION_MARKER,location.isActive()));
@@ -594,6 +631,16 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
     @Override
     public void signInButtonClicked(){
         login();
+    }
+
+    /******************************* FILTER FRAGMENT METHODS ***********************************/
+
+    @Override
+    public void ipStateChanged() {
+        ipState = !ipState;
+        for(Marker m : ipMapMarkers){
+            m.setVisible(ipState);
+        }
     }
 
     /*************************** QUICK MESSAGE FRAGMENT METHODS ********************************/
@@ -712,15 +759,16 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
     public void messageReceived(final String groupId, Message msg) {
         Log.d(TAG,"DBMANAGER: message received");
         final String userId = msg.getSender().getMemberId();
-        if(fragmentManager.findFragmentByTag(MAP_FRAGMENT_TAG)!=null){
+        if(drawerFlag.equals(MAP_FRAGMENT_TAG)){
             int position = findMarker(userId,groupId);
             if (position < mapMarkers.size()) {
                 if (position >= 0) {
                     final Marker marker = mapMarkers.get(position).getMarker();
                     marker.setSnippet(msg.getMsg());
+                    marker.setTag(msg);
                     marker.showInfoWindow();
 
-                    new CountDownTimer(5000, 5000) {
+                    new CountDownTimer(9000, 9000) {
 
                         public void onTick(long millisUntilFinished) {
 
@@ -813,30 +861,58 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
         }
     }
 
+    @Override
+    public void initInterestPoint(InterestPoint interestPoint, String userId, String ipId) {
+        InterestPointFragment fragment = (InterestPointFragment) fragmentManager.findFragmentByTag(IP_FRAGMENT_TAG+userId+ipId);
+        if(fragment!=null)
+            fragment.onInterestPointReceived(interestPoint);
+    }
+
+
     /****************************** GOOGLE MAPS METHODS **************************************/
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        mGoogleMap = googleMap;
         googleMap.setOnMapLoadedCallback(this);
+        googleMap.setInfoWindowAdapter(new mInfoWindowAdapter(getLayoutInflater()));
         googleMap.getUiSettings().setMapToolbarEnabled(false);
 
-        mGoogleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+        googleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
             public void onInfoWindowClick(Marker marker) {
-                setMessagesFragment(groupIdMarker(marker.getId()));
+                Object tag = marker.getTag();
+                if(tag instanceof Message){
+                    Message msg = (Message) tag;
+                    switch (msg.getType()){
+                        case Message.TYPE_TEXT:
+                            setMessagesFragment(groupIdMarker(marker.getId()));
+                            break;
+                        case Message.TYPE_IP:
+                            Log.d(TAG,"MSG IP INFOW WINDOW CLICKED     " +msg.getUserIp()+"   "+msg.getIpId());
+                            setIpFragment(msg.getUserIp(),msg.getIpId());
+                            break;
+                    }
+                } else if (tag instanceof InterestPoint){
+                    InterestPoint ip = (InterestPoint) tag;
+                    setIpFragment(ip.getUserId(),ip.getIpId());
+                }
             }
         });
-
+        mGoogleMap = googleMap;
     }
 
 
     @Override
     public void onMapLoaded() {
         mGoogleMap.setOnMapLongClickListener(this);
+        mGoogleMap.setOnMarkerClickListener(this);
         mapLoaded = true;
         autoZoomFab.setEnabled(true);
         locationFab.setEnabled(true);
+
+        Location location = dbManager.getProfile().getLocation();
+        mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLat(),location.getLng()),3));
+
 
         for(MapMarker m: mapMarkers){
             if(m!=null){
@@ -848,15 +924,103 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
             }
         }
 
+        User profile = dbManager.getProfile();
+        if(profile.getInterestPoints()!=null)
+            for(InterestPoint ip : dbManager.getProfile().getInterestPoints().values()){
+                Marker m = mGoogleMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(ip.getLat(), ip.getLng()))
+                        .title(ip.getName())
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.pushpin))
+                        .anchor((float)0.1,1)
+                        .visible(ipState));
+                m.setTag(ip);
+                ipMapMarkers.add(m);
+            }
+
         autoZoomFab.performClick();
     }
 
     @Override
-    public void onMapLongClick(LatLng point){
+    public void onMapLongClick(final LatLng point){
         /*locationChanged(new Location(point.latitude,point.longitude,0),dbManager.getId(),dbManager.getNick(),"");*/
-        Toast.makeText(MainActivity.this,"lat: "+point.latitude+" lng: "+point.longitude,Toast.LENGTH_SHORT).show();
+        //Toast.makeText(MainActivity.this,"lat: "+point.latitude+" lng: "+point.longitude,Toast.LENGTH_SHORT).show();
+
+        final CharSequence[] items = {
+                "Private interest point", "Destination point", "..."
+        };
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setTitle("Create");
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+        builder.setItems(items, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int item) {
+                if (item == 0){
+                    final LinearLayout ll = new LinearLayout(MainActivity.this);
+                    ll.setOrientation(LinearLayout.VERTICAL);
+                    final EditText et = new EditText(MainActivity.this);
+                    final EditText et2 = new EditText(MainActivity.this);
+                    et.setHint("Name");
+                    et2.setHint("Description");
+                    ll.addView(et);
+                    ll.addView(et2);
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Creating interest point")
+                            .setView(ll)
+                            .setCancelable(true)
+                            .setPositiveButton("Create", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+
+                                    String name = et.getText().toString();
+                                    String description = et2.getText().toString();
+                                    if (!name.equals("")&&!description.equals("")){
+                                        dbManager.createInterestPoint(name,description,point.latitude,point.longitude);
+                                    }
+                                }
+                            })
+                            .show();
+                }else if(item == 1){
+                    Toast.makeText(MainActivity.this,"Not available yet",Toast.LENGTH_SHORT).show();
+                }else if(item == 2){
+                    Toast.makeText(MainActivity.this, "Not available yet", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        AlertDialog alert = builder.create();
+        alert.show();
     }
 
+    @Override
+    public boolean onMarkerClick(final Marker marker) {
+        Object tag = marker.getTag();
+        if(tag instanceof InterestPoint) {
+
+        /*marker.showInfoWindow();
+        new CountDownTimer(5000,5000){
+
+            @Override
+            public void onTick(long l) {
+
+            }
+
+            @Override
+            public void onFinish() {
+                marker.hideInfoWindow();
+            }
+        };*/
+
+            QuickMsgFragment quickMsgFragment = (QuickMsgFragment) fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);
+            if (quickMsgFragment != null) {
+                quickMsgFragment.addIp((InterestPoint)marker.getTag());
+            }
+        }
+        return false;
+    }
 
     /********************************* ANDROID METHODS ****************************************/
 
@@ -864,10 +1028,9 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
     public void onBackPressed() {
         super.onBackPressed();
 
-        Fragment fragment = fragmentManager.findFragmentById(R.id.map_fragment_content);
-        if (fragment instanceof SupportMapFragment)
+        if (drawerFlag.equals(MAP_FRAGMENT_TAG))
             setMapFragment();
-        if (fragment instanceof Groups_fragment)
+        if (drawerFlag.equals(GROUPS_FRAGMENT_TAG))
             setGroupsFragment();
 
         ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
@@ -1063,7 +1226,7 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
                     transaction.commit();
                     fragmentManager.popBackStack();
                 }else{
-                    Filter_fragment fragment = new Filter_fragment();
+                    Filter_fragment fragment = Filter_fragment.newInstance(ipState);
                     transaction.add(R.id.filter_fragment_content,fragment,FILTER_FRAGMENT_TAG);
                     transaction.addToBackStack(FILTER_FRAGMENT_TAG);
                     transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
@@ -1089,7 +1252,7 @@ public class MainActivity extends AppCompatActivity implements Groups_fragment.O
                     }
                 } else {
                     if (existingFilter==null){
-                        Filter_fragment newFilter = new Filter_fragment();
+                        Filter_fragment newFilter = Filter_fragment.newInstance(ipState);
                         qmTransaction.add(R.id.filter_fragment_content,newFilter,FILTER_FRAGMENT_TAG);
                     }
                     QuickMsgFragment newQuickMsg = new QuickMsgFragment();

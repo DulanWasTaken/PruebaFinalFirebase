@@ -27,7 +27,17 @@
                 android:layout_alignParentStart="true"
                 android:layout_toStartOf="@+id/quickMsgButton"
                 android:textColor="@color/text_white"
-                android:id="@+id/quickMsgEditText" />
+                android:id="@+id/quickMsgEditText">
+            </EditText>
+
+            <ImageButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_attach_file"
+                android:id="@+id/quickMsg_attachButton"
+                android:layout_alignEnd="@id/quickMsgEditText"
+                android:paddingRight="5dp"
+                android:background="@null"/>
 
             <ImageButton
                 android:layout_width="42dp"

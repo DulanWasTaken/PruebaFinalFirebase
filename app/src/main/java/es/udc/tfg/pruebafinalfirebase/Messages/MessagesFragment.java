@@ -89,7 +89,7 @@ public class MessagesFragment extends Fragment {
             public void onClick(View view) {
                 String msg = msgEditText.getText().toString();
                 if(!msg.equals("")){
-                    dbManager.sendMsg(msg,groupId);
+                    //dbManager.sendMsg(msg,groupId,Message.TYPE_TEXT);
                 }
                 msgEditText.setText("");
             }

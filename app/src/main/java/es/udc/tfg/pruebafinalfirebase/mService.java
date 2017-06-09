@@ -146,6 +146,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     }
 
     public boolean enableLocation() {
+        Log.d(TAG,"ENABLE LOCATION");
 
         final LocationRequest mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(10000);
@@ -233,6 +234,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
     @Override
     public void onLocationChanged(Location location) {
+        Log.d(TAG,"gps changing position");
         es.udc.tfg.pruebafinalfirebase.Location myLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getLatitude(),location.getLongitude(),location.getAccuracy(),true);
         dbManager.setLocation(myLocation);
         if(bound)
@@ -316,6 +318,11 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
     @Override
     public void updateFilter(){
+
+    }
+
+    @Override
+    public void initInterestPoint(InterestPoint interestPoint, String userId, String ipId) {
 
     }
 }

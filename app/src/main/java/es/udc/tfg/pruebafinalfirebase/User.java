@@ -2,6 +2,7 @@ package es.udc.tfg.pruebafinalfirebase;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Created by Usuario on 18/12/2016.
@@ -14,7 +15,7 @@ public class User {
     private String key;
     private String nick;
     private Location location;
-    private ArrayList<InterestPoint> interestPoints;
+    private HashMap<String,InterestPoint> interestPoints;
     private long time;
     private String status;
     private ArrayList<String> groupsId;
@@ -24,13 +25,12 @@ public class User {
 
     }
 
-    public User(String email, String key, String id, String phoneNumber,String nick, Location location, ArrayList<InterestPoint> interestPoints,String status, ArrayList<String> groupsId,String request) {
+    public User(String email, String key, String id, String phoneNumber,String nick, Location location,String status, ArrayList<String> groupsId,String request) {
         this.email = email;
         this.key = key;
         this.id = id;
         this.phoneNumber = phoneNumber;
         this.location = location;
-        this.interestPoints = interestPoints;
         this.time = System.currentTimeMillis();
         this.status = status;
         this.nick = nick;
@@ -78,11 +78,11 @@ public class User {
         this.key = key;
     }
 
-    public ArrayList<InterestPoint> getInterestPoints() {
+    public HashMap<String,InterestPoint> getInterestPoints() {
         return interestPoints;
     }
 
-    public void setInterestPoints(ArrayList<InterestPoint> interestPoints) {
+    public void setInterestPoints(HashMap<String,InterestPoint> interestPoints) {
         this.interestPoints = interestPoints;
     }
 

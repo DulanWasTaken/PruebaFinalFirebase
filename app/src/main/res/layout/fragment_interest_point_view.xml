@@ -1,0 +1,54 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="es.udc.tfg.pruebafinalfirebase.InterestPointFragment">
+
+    <!-- TODO: Update blank fragment layout -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/ip_title_tv"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="50dp"
+        android:textSize="@dimen/cast_libraries_material_featurehighlight_text_header_size"/>
+
+    <TextView
+        android:id="@+id/ip_description_tv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/ip_title_tv"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="50dp"
+        android:textSize="@dimen/cast_libraries_material_featurehighlight_text_body_size"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Your rating"
+        android:id="@+id/textView23"
+        android:layout_below="@+id/ip_description_tv"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="171dp" />
+
+
+    <RatingBar
+        android:id="@+id/ip_ratingBar2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/textView23"
+        android:layout_centerHorizontal="true" />
+
+    <TextView
+        android:id="@+id/ip_info_rating2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:layout_below="@+id/ip_ratingBar2"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="5dp" />
+
+
+
+
+</RelativeLayout>
