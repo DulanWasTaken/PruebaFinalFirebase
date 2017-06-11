@@ -54,6 +54,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     private final IBinder mBinder = (IBinder) new LocalBinder();
     private OnServiceInteractionListener mListener;
     private SharedPreferences pref;
+    private long lastTimeForeground = 0;
     private NotificationManager mNotifyMgr;
     private GoogleApiClient mGoogleLocateApiClient;
     private DBManager dbManager = DBManager.getInstance();
@@ -84,6 +85,9 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         Log.d(TAG, "onUnBind");
         bound = false;
         dbManager.bindDBManager(mService.this);
+        long aux = System.currentTimeMillis();
+        pref.edit().putLong("lastTimeForegroud",aux).commit();
+        lastTimeForeground = aux;
         return super.onUnbind(intent);
     }
 
@@ -94,6 +98,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
         pref = getSharedPreferences(TAG, Context.MODE_PRIVATE);
         pref.edit().putBoolean("serviceRunning",true).commit();
+        lastTimeForeground = pref.getLong("lastTimeForeground",0);
 
         mNotifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
@@ -265,22 +270,26 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
     @Override
     public void messageReceived(String groupId, Message msg) {
-        pendingMsg.add(msg);
-        Intent msgIntent = new Intent(this, MainActivity.class);
-        PendingIntent msgPIntent = PendingIntent.getActivity(this, NEW_MSG_CODE, msgIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification.Builder mBuilder = new Notification.Builder(this) // builder notification
-                .setSmallIcon(R.mipmap.main_ic_launch) // Icon to show in the Status Bar
-                .setContentTitle("Message received") // Title to show in the Status Bar
-                .setContentIntent(msgPIntent);
-        Notification.InboxStyle is = new Notification.InboxStyle();
-        for(Message m : pendingMsg){
-            is.addLine("["+dbManager.findGroupById(groupId).getName()+"]"+m.getSender().getNick()+": "+m.getMsg());
+        if(msg.getTime()>lastTimeForeground){
+
+            pendingMsg.add(msg);
+            Intent msgIntent = new Intent(this, MainActivity.class);
+            PendingIntent msgPIntent = PendingIntent.getActivity(this, NEW_MSG_CODE, msgIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            Notification.Builder mBuilder = new Notification.Builder(this) // builder notification
+                    .setSmallIcon(R.mipmap.main_ic_launch) // Icon to show in the Status Bar
+                    .setContentTitle("Message received") // Title to show in the Status Bar
+                    .setContentIntent(msgPIntent);
+            Notification.InboxStyle is = new Notification.InboxStyle();
+            for(Message m : pendingMsg){
+                is.addLine("["+dbManager.findGroupById(groupId).getName()+"]"+m.getSender().getNick()+": "+m.getMsg());
+            }
+            String summ = pendingMsg.size()>1? "new messages":"new message";
+            is.setSummaryText(pendingMsg.size()+" "+summ);
+            mBuilder.setStyle(is);
+            if(!bound)
+                mNotifyMgr.notify(NOTIF_ID_MSG_RECEIVED,mBuilder.build());
+
         }
-        String summ = pendingMsg.size()>1? "new messages":"new message";
-        is.setSummaryText(pendingMsg.size()+" "+summ);
-        mBuilder.setStyle(is);
-        if(!bound)
-            mNotifyMgr.notify(NOTIF_ID_MSG_RECEIVED,mBuilder.build());
     }
 
     @Override

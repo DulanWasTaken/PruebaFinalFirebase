@@ -218,6 +218,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             public boolean onNavigationItemSelected(MenuItem menuItem) {
                 menuItem.setChecked(true);
                 mDrawerLayout.closeDrawers();
+                removeSecondaryViews();
                 switch (menuItem.getItemId()){
                     case R.id.drawer_map:
                         setMapFragment();
@@ -496,6 +497,19 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
         pb.cancel();
+    }
+
+    private void removeSecondaryViews(){
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        Fragment filter = fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
+        Fragment quickMsg = fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);
+        Fragment requests = fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
+        if(filter!=null)
+            transaction.remove(filter);
+        if(quickMsg!=null)
+            transaction.remove(quickMsg);
+        if(requests!=null)
+            transaction.remove(requests);
     }
 
 
@@ -1048,15 +1062,16 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         // Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);
         switch (requestCode){
             case RC_SIGN_IN:
-                Log.d(TAG,"recibo autenticación de google");
                 GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
                 if (result.isSuccess()) {
-                    // Google Sign In was successful, authenticate with Firebase
-                    GoogleSignInAccount account = result.getSignInAccount();
-                    dbManager.signIn(account);
+                    Log.d(TAG,"recibo autenticación de google");
+                    GoogleSignInAccount account2 = result.getSignInAccount();
+                    dbManager.signIn(account2);
                 } else {
                     // Google Sign In failed, update UI appropriately
                     // ...
+                    pb.cancel();
+                    Toast.makeText(MainActivity.this,"Error",Toast.LENGTH_SHORT).show();
                 }
                 break;
 

@@ -451,7 +451,7 @@ public class DBManager {
     }
 
     public void signIn(GoogleSignInAccount googlekey){
-
+        Log.d(TAG,"dbmanager logueando quizá?");
         AuthCredential credential = GoogleAuthProvider.getCredential(googlekey.getIdToken(), null);
         DBauth.signInWithCredential(credential)
                 .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
