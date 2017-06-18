@@ -55,10 +55,12 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.GoogleMapOptions;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
@@ -135,6 +137,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
     private boolean mBound;
 
     private GoogleApiClient mGoogleAuthApiClient;
+    private GoogleMapOptions mapOptions;
     private GoogleSignInOptions gso;
     private GoogleMap mGoogleMap;
     private String drawerFlag = "";
@@ -168,6 +171,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .addApi(AppInvite.API)
                 .build();
+
+
 
 
         /************************** INICIALIZAR VARIABLES ***************************/
@@ -282,8 +287,10 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         });
 
         /***********************  COMPROBAR ESTADO DE AUTENTICACIÓN **************************/
-        if(!myServiceRunning)
+        if(!myServiceRunning) {
             startService(new Intent(MainActivity.this, es.udc.tfg.pruebafinalfirebase.mService.class));
+            Log.d(TAG,"STARTING SERVICE");
+        }
         dbManager.bindDBManager(MainActivity.this);
 
         MapsInitializer.initialize(getApplicationContext());
@@ -331,6 +338,16 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
     }
 
     private void setMapFragment(){
+        Log.d(TAG,"SET MAP");
+
+        //Location location = dbManager.getProfile().getLocation();
+        mapOptions = new GoogleMapOptions();
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(new LatLng(43.3066633,-8.5128911))
+                .zoom(10)
+                .build();
+        mapOptions.camera(cameraPosition);
+
         if (menu != null){
             menuItemShare.setEnabled(true);
             menuItemNotif.setEnabled(true);
@@ -351,11 +368,12 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         ab.setTitle("W'U");
 
         if(!drawerFlag.equals(MAP_FRAGMENT_TAG)) {
-            SupportMapFragment mMapFragment = SupportMapFragment.newInstance();
+            SupportMapFragment mMapFragment = SupportMapFragment.newInstance(mapOptions);
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
             fragmentTransaction.replace(R.id.map_fragment_content, mMapFragment, MAP_FRAGMENT_TAG);
             fragmentTransaction.commit();
             mMapFragment.getMapAsync(MainActivity.this);
+            drawerFlag = MAP_FRAGMENT_TAG;
         }
 
         pb.cancel();
@@ -598,20 +616,28 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
 
         if (index >= 0){
+            Log.d(TAG,"position: "+ "existe0");
             MapMarker m = mapMarkers.get(index);
             Marker marker = m.getMarker();
             m.setMarkerOptions(options);
             m.setActive(location.isActive());
-            if (marker!= null){
+
+            if (marker!= null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
                 marker.setPosition(new LatLng(location.getLat(), location.getLng()));
                 marker.setVisible(m.isActive()&& dbManager.isFiltered(groupId));
+                Log.d(TAG,"position: "+ "existe1");
+
             }else if (drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap!=null){
                 Marker newMarker = mGoogleMap.addMarker(options);
                 newMarker.setVisible(m.isActive()&& dbManager.isFiltered(groupId));
                 m.setMarker(newMarker);
+                Log.d(TAG,"position: "+ "existe2");
+
             }
 
         }else{
+            Log.d(TAG,"position: "+ "NO existe");
+
             if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
                 Marker newMarker = mGoogleMap.addMarker(options);
                 newMarker.setVisible(location.isActive() && dbManager.isFiltered(groupId));
@@ -620,6 +646,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 mapMarkers.add(new MapMarker(options, userId, groupId, MapMarker.LOCATION_MARKER,location.isActive()));
             }
         }
+
     }
 
     private int findMarker(String userId, String groupId){
@@ -918,14 +945,12 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
     @Override
     public void onMapLoaded() {
+        Log.d(TAG,"position: "+"map loaded");
         mGoogleMap.setOnMapLongClickListener(this);
         mGoogleMap.setOnMarkerClickListener(this);
         mapLoaded = true;
         autoZoomFab.setEnabled(true);
         locationFab.setEnabled(true);
-
-        Location location = dbManager.getProfile().getLocation();
-        mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLat(),location.getLng()),3));
 
 
         for(MapMarker m: mapMarkers){
@@ -951,7 +976,6 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 ipMapMarkers.add(m);
             }
 
-        autoZoomFab.performClick();
     }
 
     @Override

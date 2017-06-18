@@ -57,6 +57,7 @@ public class DBManager {
     private FirebaseAuth DBauth = FirebaseAuth.getInstance();
     private DBManagerInteractions mListener;
 
+    private ValueEventListener profileCheck;
     private ValueEventListener groupListener;
     private ValueEventListener userLocationListener;
     private ChildEventListener groupMembersListener;
@@ -79,7 +80,69 @@ public class DBManager {
     /*********************************** AUTH METHODS ******************************************/
 
     private DBManager() {
-        Log.d(TAG,"create");
+        DBauth.addAuthStateListener(new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                mUser = firebaseAuth.getCurrentUser();
+
+                Log.d(TAG, "ME CONECTO CON EL USUARIO "+mUser);
+
+                if(mUser == null){
+                    //desconectado
+                    Log.d(TAG,"LOG OUT");
+                    mProfileReference = null;
+                    authenticated=false;
+                    if(mListener!=null){
+                        mListener.signedOut();
+                    }
+                }else{
+                    //conectado
+                    profileCheck = new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            if(dataSnapshot.exists()){
+                                //existe perfil
+                                authenticated = true;
+                                if(mListener!=null)
+                                    mListener.signedIn();
+                                mProfile = dataSnapshot.getValue(User.class);
+                                initListeners(mUser.getUid());
+                            } else{
+                                //no existe perfil
+                                authenticated = false;
+                                if(mListener!=null)
+                                    mListener.noProfileAvailable();
+                            }
+
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+
+                        }
+                    };
+                    DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).addListenerForSingleValueEvent(profileCheck);
+                    DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).addValueEventListener(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            if(dataSnapshot.exists()){
+                                mProfile = dataSnapshot.getValue(User.class);
+
+                                if (mProfile!=null)
+                                    mProfileReference = DBroot.child(DB_USER_REFERENCE).child(mUser.getUid());
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+
+                        }
+                    });
+                }
+            }
+        });
+
+        /*Log.d(TAG,"create");
         DBauth.addAuthStateListener(new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
@@ -91,7 +154,9 @@ public class DBManager {
                     DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).addValueEventListener(new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
+
                             if(dataSnapshot.exists()){
+                                Log.d(TAG, "SE EJECUTA TODO ESTO");
                                 mProfile = dataSnapshot.getValue(User.class);
                                 if(mProfile!=null){
                                     mProfileReference = DBroot.child(DB_USER_REFERENCE).child(mUser.getUid());
@@ -99,7 +164,7 @@ public class DBManager {
                                         if(authenticated!=null){
                                             if(!authenticated)
                                                 authenticated = true;
-                                                mListener.signedIn();
+                                            mListener.signedIn();
                                         } else{
                                             mListener.signedIn();
                                         }
@@ -130,22 +195,11 @@ public class DBManager {
                     }
                 }
             }
-        });
+        });*/
     }
 
     private void initListeners(String id){
-        DatabaseReference referencia = FirebaseDatabase.getInstance().getReference().child("users").child("user123").child("name");
-        referencia.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                dataSnapshot.getValue();
-            }
 
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
         DBroot.child(DB_USER_REFERENCE).child(id).child(DB_USER_GROUPS_REFERENCE).addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
@@ -501,6 +555,8 @@ public class DBManager {
         DBroot.child(DB_PUBLICID_REFERENCE).child(phone).setValue(requestPath);
         User newProfile = new User(email,"",mUser.getUid(),phone,nick,new Location(),"",new ArrayList<String>(),requestPath);
         DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).setValue(newProfile);
+
+        DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).addListenerForSingleValueEvent(profileCheck);
     }
 
     public User getProfile(){
@@ -653,7 +709,7 @@ public class DBManager {
     }
 
     public void sendMsg(String msg, String groupId,int type,InterestPoint interestPoint){
-        Log.d(TAG,"sending "+interestPoint.toString()+" interest point");
+
         if(interestPoint == null)
             DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg,type));
         else
