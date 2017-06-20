@@ -80,6 +80,7 @@ public class DBManager {
     /*********************************** AUTH METHODS ******************************************/
 
     private DBManager() {
+        Log.d(TAG,"CREANDO DBMANAGER");
         DBauth.addAuthStateListener(new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
@@ -108,7 +109,7 @@ public class DBManager {
                                 mProfile = dataSnapshot.getValue(User.class);
                                 initListeners(mUser.getUid());
                             } else{
-                                //no existe perfil
+                                Log.d(TAG,"NO EXISTE PERFIL");
                                 authenticated = false;
                                 if(mListener!=null)
                                     mListener.noProfileAvailable();

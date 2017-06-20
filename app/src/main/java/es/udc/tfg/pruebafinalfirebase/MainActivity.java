@@ -127,6 +127,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
     private Button notifications;
     private Menu menu;
     private Dialog pb;
+    private AlertDialog noProfileDialog;
     private ActionBar ab;
 
     public FragmentManager fragmentManager;
@@ -334,6 +335,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         if(filter!=null)
             transaction.remove(filter);
         transaction.commit();
+        drawerFlag = LOGIN_FRAGMENT_TAG;
         pb.cancel();
     }
 
@@ -406,6 +408,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             if(filter!=null)
                 fragmentTransaction.remove(filter);
             fragmentTransaction.commit();
+            drawerFlag = GROUPS_FRAGMENT_TAG;
         }
 
         pb.cancel();
@@ -435,6 +438,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
 
+        drawerFlag = EDIT_GROUP_FRAGMENT_TAG;
+
         pb.cancel();
     }
 
@@ -461,6 +466,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentTransaction.replace(R.id.map_fragment_content, messagesFragment, MESSAGES_FRAGMENT_TAG+groupId);
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
+
+        drawerFlag = MESSAGES_FRAGMENT_TAG;
 
         pb.cancel();
     }
@@ -489,6 +496,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
 
+        drawerFlag = IP_FRAGMENT_TAG;
+
         pb.cancel();
     }
 
@@ -514,6 +523,9 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentTransaction.replace(R.id.map_fragment_content, settingsFragment, SETTINGS_FRAGMENT_TAG);
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
+
+        drawerFlag = SETTINGS_FRAGMENT_TAG;
+
         pb.cancel();
     }
 
@@ -862,22 +874,27 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         et.setInputType(InputType.TYPE_CLASS_NUMBER);
         ll.addView(et);
         ll.addView(et2);
-        new AlertDialog.Builder(MainActivity.this)
-                .setTitle("Phone Number & Nick")
-                .setView(ll)
-                .setCancelable(false)
-                .setPositiveButton("Next", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Log.d(TAG,"Next in dialog");
-                        String phoneNumber = Utils.generateValidPhoneNumber(et.getText().toString());
-                        String nick = et2.getText().toString();
-                        if (!phoneNumber.equals("")&&!nick.equals("")){
-                            dbManager.createProfile(phoneNumber,nick);
+        if(noProfileDialog == null)
+            noProfileDialog = new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Phone Number & Nick")
+                    .setView(ll)
+                    .setCancelable(false)
+                    .setPositiveButton("Next", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Log.d(TAG,"Next in dialog");
+                            String phoneNumber = Utils.generateValidPhoneNumber(et.getText().toString());
+                            String nick = et2.getText().toString();
+                            if (!phoneNumber.equals("")&&!nick.equals("")){
+                                dbManager.createProfile(phoneNumber,nick);
+                            }
                         }
-                    }
-                })
-                .show();
+                    })
+                    .create();
+        if(!noProfileDialog.isShowing()){
+            noProfileDialog.show();
+        }
+
     }
 
     @Override

@@ -75,7 +75,7 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
     public void onBindViewHolder(GroupMemberRecyclerViewAdapter.ViewHolder holder, final int position) {
         GroupMember member = mDataset.get(position);
         holder.name.setText(member.getNick());
-        if(!admins.contains(member.getMemberId())) {
+        if(!admins.contains(dbManager.getId())) {
             holder.admin.setVisibility(View.INVISIBLE);
             holder.deleteButton.setVisibility(View.INVISIBLE);
         }

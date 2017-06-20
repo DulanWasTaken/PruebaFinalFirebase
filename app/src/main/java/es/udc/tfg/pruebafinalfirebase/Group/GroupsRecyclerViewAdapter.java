@@ -6,6 +6,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -32,6 +33,7 @@ public class GroupsRecyclerViewAdapter extends RecyclerView.Adapter<GroupsRecycl
         public TextView name, data,time;
         public RoundedImageView img;
         public RelativeLayout row;
+        public ImageButton editButton;
 
         public ViewHolder(View view) {
             super(view);
@@ -40,6 +42,7 @@ public class GroupsRecyclerViewAdapter extends RecyclerView.Adapter<GroupsRecycl
             time = (TextView) view.findViewById(R.id.group_time);
             img = (RoundedImageView) view.findViewById(R.id.group_img);
             row = (RelativeLayout) view.findViewById(R.id.group_row);
+            editButton = (ImageButton) view.findViewById(R.id.edit_button);
         }
     }
 
@@ -82,11 +85,10 @@ public class GroupsRecyclerViewAdapter extends RecyclerView.Adapter<GroupsRecycl
                 mListener.groupSelected(mDataset.get(position).getId());
             }
         });
-        holder.row.setOnLongClickListener(new View.OnLongClickListener() {
+        holder.editButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public boolean onLongClick(View v) {
+            public void onClick(View v) {
                 mListener.groupLongClick(mDataset.get(position).getId());
-                return true;
             }
         });
     }

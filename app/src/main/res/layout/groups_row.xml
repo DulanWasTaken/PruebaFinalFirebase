@@ -34,6 +34,16 @@
         android:layout_margin="5dp"
         android:id="@+id/group_img"/>
 
+    <ImageButton
+        android:layout_width="45dp"
+        android:layout_height="45dp"
+        android:id="@+id/edit_button"
+        android:layout_centerVertical="true"
+        android:src="@drawable/ic_editgroup"
+        android:background="@android:color/transparent"
+        android:layout_toStartOf="@+id/group_time"
+        android:layout_marginRight="7dp"/>
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
