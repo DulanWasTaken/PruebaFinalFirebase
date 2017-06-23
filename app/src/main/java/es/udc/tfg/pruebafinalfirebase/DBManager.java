@@ -104,9 +104,9 @@ public class DBManager {
                             if(dataSnapshot.exists()){
                                 //existe perfil
                                 authenticated = true;
+                                mProfile = dataSnapshot.getValue(User.class);
                                 if(mListener!=null)
                                     mListener.signedIn();
-                                mProfile = dataSnapshot.getValue(User.class);
                                 initListeners(mUser.getUid());
                             } else{
                                 Log.d(TAG,"NO EXISTE PERFIL");
@@ -782,13 +782,15 @@ public class DBManager {
     }
 
     public InterestPoint getInterestPoint(final String userId, final String ipId){
-        InterestPoint point = mProfile.getInterestPoints().get(ipId);
-        if(point!=null)
-            return point;
+        if(mProfile.getInterestPoints()!=null) {
+            InterestPoint point = mProfile.getInterestPoints().get(ipId);
+            if (point != null)
+                return point;
+        }
         DBroot.child(DB_USER_REFERENCE).child(userId).child(DB_USER_INTERESTPOINTS_REF).child(ipId).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                mListener.initInterestPoint(dataSnapshot.getValue(InterestPoint.class),userId,ipId);
+                mListener.initInterestPoint(dataSnapshot.getValue(InterestPoint.class), userId, ipId);
             }
 
             @Override
@@ -796,6 +798,7 @@ public class DBManager {
 
             }
         });
+
         return null;
     }
 

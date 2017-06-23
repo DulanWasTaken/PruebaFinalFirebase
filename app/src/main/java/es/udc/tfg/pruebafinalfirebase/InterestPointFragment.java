@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,6 +27,7 @@ public class InterestPointFragment extends Fragment {
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
+    private static final String TAG = "IPFRAGMENT";
 
     private String ipId,userId;
     private EditText title_et,description_et;
@@ -110,10 +112,16 @@ public class InterestPointFragment extends Fragment {
         if(userId.equals(dbManager.getId())){
             ratingBar.setIsIndicator(true);
             InterestPoint ip = dbManager.getInterestPoint(userId,ipId);
+            Log.d(TAG,"");
             title_et.setText(ip.getName());
             description_et.setText(ip.getDescription());
-            ratingBar.setRating(meanRating(ip.getRating().values()));
-            rating_info.setText(ip.getRating().size()+" total ratings");
+            if(ip.getRating()!=null) {
+                ratingBar.setRating(meanRating(ip.getRating().values()));
+                rating_info.setText(ip.getRating().size() + " total ratings");
+            }else{
+                ratingBar.setRating(0);
+                rating_info.setText("0" + " total ratings");
+            }
             save_button.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -124,11 +132,13 @@ public class InterestPointFragment extends Fragment {
                 }
             });
         }else{
+            Log.d(TAG,"REQUIERO PUNTO DE INTERES");
             dbManager.getInterestPoint(userId,ipId);
         }
     }
 
     public void onInterestPointReceived(InterestPoint ip){
+        Log.d(TAG,"IP RECEIVED WITH NAME: "+ip.getName());
         ratingBar.setIsIndicator(false);
         title_tv.setText(ip.getName());
         description_tv.setText(ip.getDescription());

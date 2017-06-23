@@ -11,6 +11,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
@@ -41,6 +42,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.text.InputType;
 
@@ -56,6 +58,7 @@ import com.google.android.gms.common.api.Status;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.GoogleMapOptions;
+import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -65,6 +68,8 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -216,6 +221,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         main_content = (RelativeLayout) findViewById(R.id.main_content);
         navigationView = (NavigationView) findViewById(R.id.navigation_view);
+        TextView sakdfñ = (TextView) navigationView.getHeaderView(0).findViewById(R.id.account_name);
+        sakdfñ.setText("HOLA SOY YO");
 
         /*********************** INICILIZAR LOS ONCLICKLISTENERS **************************/
 
@@ -316,6 +323,10 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
     private void initView(){
         if(dbManager.isAuthenticated()){
+            TextView account_name = (TextView) navigationView.getHeaderView(0).findViewById(R.id.account_name);
+            TextView account_phone = (TextView) navigationView.getHeaderView(0).findViewById(R.id.account_phone);
+            account_name.setText(dbManager.getNick());
+            account_phone.setText(dbManager.getProfile().getPhoneNumber());
             setMapFragment();
         }else{
             setLoginFragment();
@@ -517,6 +528,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         autoZoomFab.setVisibility(View.INVISIBLE);
 
         ab.setDisplayHomeAsUpEnabled(true);
+        ab.setTitle("Settings");
+
 
         SettingsFragment settingsFragment = new SettingsFragment();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -921,6 +934,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
     @Override
     public void initInterestPoint(InterestPoint interestPoint, String userId, String ipId) {
+        Log.d(TAG,"INICIANDO PUNTO DE INTERES");
         InterestPointFragment fragment = (InterestPointFragment) fragmentManager.findFragmentByTag(IP_FRAGMENT_TAG+userId+ipId);
         if(fragment!=null)
             fragment.onInterestPointReceived(interestPoint);
@@ -939,6 +953,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             @Override
             public void onInfoWindowClick(Marker marker) {
                 Object tag = marker.getTag();
+                removeSecondaryViews();
                 if(tag instanceof Message){
                     Message msg = (Message) tag;
                     switch (msg.getType()){
@@ -1083,10 +1098,13 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
     public void onBackPressed() {
         super.onBackPressed();
 
-        if (drawerFlag.equals(MAP_FRAGMENT_TAG))
-            setMapFragment();
-        if (drawerFlag.equals(GROUPS_FRAGMENT_TAG))
+        Fragment frag = fragmentManager.findFragmentById(R.id.map_fragment_content);
+
+        if(frag instanceof Groups_fragment)
             setGroupsFragment();
+        else
+            setMapFragment();
+
 
         ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
         View view = this.getCurrentFocus();
@@ -1268,7 +1286,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 return true;
             case android.R.id.home:
                 Fragment fragment1 = fragmentManager.findFragmentById(R.id.map_fragment_content);
-                if(fragment1 instanceof EditGroupFragment || fragment1 instanceof MessagesFragment)
+                if(fragment1 instanceof EditGroupFragment || fragment1 instanceof MessagesFragment || fragment1 instanceof InterestPointFragment)
                     onBackPressed();
                 else
                     mDrawerLayout.openDrawer(GravityCompat.START);
@@ -1324,6 +1342,25 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             default:
                 return super.onOptionsItemSelected(item);
 
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+
+        // Checks whether a hardware keyboard is available
+        if (newConfig.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO) {
+            if(autoZoomFab!=null)
+                autoZoomFab.setVisibility(View.GONE);
+            if(locationFab!=null)
+                locationFab.setVisibility(View.GONE);
+        } else if (newConfig.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_YES) {
+            if(autoZoomFab!=null&&drawerFlag.equals(MAP_FRAGMENT_TAG))
+                autoZoomFab.setVisibility(View.VISIBLE);
+            if(locationFab!=null&&drawerFlag.equals(MAP_FRAGMENT_TAG))
+                locationFab.setVisibility(View.VISIBLE);
         }
     }
 
