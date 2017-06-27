@@ -23,6 +23,8 @@ import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
@@ -40,8 +42,7 @@ public class EditGroupFragment extends Fragment {
     private Context context;
     private String groupId;
     private Group group;
-    private ImageButton editNameButton;
-    private Button addMemberButton,exitGroupButton;
+    private Button addMemberButton,exitGroupButton,saveChangesButton;
     private EditText editGroupName;
     private RecyclerView groupMembersRecyclerView;
 
@@ -73,7 +74,7 @@ public class EditGroupFragment extends Fragment {
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_edit_group, container, false);
 
-        editNameButton = (ImageButton) v.findViewById(R.id.group_name_save);
+        saveChangesButton = (Button) v.findViewById(R.id.edit_group_save);
         addMemberButton = (Button) v.findViewById(R.id.add_member_button);
         exitGroupButton = (Button) v.findViewById(R.id.exit_group_button);
         editGroupName = (EditText) v.findViewById(R.id.group_name_edit);
@@ -109,13 +110,14 @@ public class EditGroupFragment extends Fragment {
         groupMembersRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
         groupMembersRecyclerView.setAdapter(new GroupMemberRecyclerViewAdapter(group,groupId));
 
-        editNameButton.setOnClickListener(new View.OnClickListener() {
+        saveChangesButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if(editGroupName.getText()!=null){
                     String name = editGroupName.getText().toString();
                     group.setName(name);
                     dbManager.updateGroup(group);
+                    mListener.saveChanges();
                 }
 
             }
@@ -138,12 +140,22 @@ public class EditGroupFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 if(exitGroupButton.getText().toString().equals("Delete Group")){
+                    ArrayList<String> members = new ArrayList<String>();
                     for(GroupMember member : group.getMembersId()){
-                        dbManager.removeMember(groupId,member.getMemberId());
+                        members.add(member.getMemberId());
+                    }
+                    dbManager.removeMember(groupId,members);
+                    ArrayList<String> invitations = new ArrayList<String>();
+                    if(group.getInvitations()!=null){
+                        for(GroupMember member : group.getInvitations()){
+                            invitations.add(member.getMemberId());
+                        }
+                        dbManager.cancelInvitation(groupId,invitations);
                     }
                 }
                 dbManager.exitGroup(group.getId());
-                getFragmentManager().popBackStack();
+                //getFragmentManager().popBackStack();
+                mListener.deleteGroup();
             }
         });
     }
@@ -162,5 +174,7 @@ public class EditGroupFragment extends Fragment {
 
     public interface OnEditGroupFragmentInteractionListener {
         public void addGroupMember();
+        public void deleteGroup();
+        public void saveChanges();
     }
 }

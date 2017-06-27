@@ -12,6 +12,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+
 import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.SimpleDividerItemDecoration;
@@ -47,6 +49,8 @@ public class Notifications_fragment extends Fragment{
     public void onResume() {
         Log.d(TAG,"onResume");
         super.onResume();
+
+        ArrayList<Request> aa = DBManager.pendingRequests;
 
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(context);
         mRecyclerView.setLayoutManager(mLayoutManager);

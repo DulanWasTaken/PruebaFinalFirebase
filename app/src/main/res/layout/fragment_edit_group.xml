@@ -1,4 +1,4 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:layout_width="match_parent"
@@ -7,68 +7,85 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="@dimen/activity_vertical_margin">
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/exit_group_button"
+        android:layout_alignParentTop="true"
+        android:layout_marginBottom="10dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="@dimen/activity_vertical_margin">
 
-            <RelativeLayout
+            <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="5dp">
+                android:text="group name"
+                android:id="@+id/group_name_edit"
+                android:textSize="20dp"
+                android:padding="7dp"/>
 
-                <EditText
-                    android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/framelayout_border"
+                android:layout_marginTop="10dp"
+                android:padding="7dp">
+
+                <TextView
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="group name"
-                    android:id="@+id/group_name_edit"
-                    android:paddingRight="5dp"
-                    android:layout_alignParentStart="true"
-                    android:layout_toStartOf="@+id/group_name_save" />
+                    android:text="Members:"
+                    android:textStyle="bold"
+                    android:textSize="17dp"/>
 
-                <ImageButton
-                    android:layout_width="45dp"
-                    android:layout_height="40dp"
-                    android:id="@+id/group_name_save"
-                    android:layout_alignParentTop="true"
-                    android:layout_alignParentEnd="true"
-                    android:background="@drawable/ic_accept_background"
-                    android:src="@drawable/ic_action_checked"/>
+                <android.support.v7.widget.RecyclerView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:id="@+id/group_members_recycler_view">
 
-            </RelativeLayout>
+                </android.support.v7.widget.RecyclerView>
 
-            <android.support.v7.widget.RecyclerView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="5dp"
-                android:id="@+id/group_members_recycler_view">
+                <Button
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:id="@+id/add_member_button"
+                    android:text="Add Member"/>
 
-            </android.support.v7.widget.RecyclerView>
-
-            <Button
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="5dp"
-                android:id="@+id/add_member_button"
-                android:text="Add Member"/>
-
-            <Button
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="5dp"
-                android:id="@+id/exit_group_button"
-                android:text="Exit Group"
-                android:background="@drawable/ic_cancel_background"/>
+            </LinearLayout>
 
         </LinearLayout>
 
     </ScrollView>
 
-</LinearLayout>
+    <Button
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:text="Leave group"
+        android:gravity="end|center_vertical"
+        android:paddingRight="20dp"
+        android:id="@+id/exit_group_button"
+        android:background="@drawable/ic_cancel_background"
+        android:layout_marginBottom="28dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentStart="true"/>
+
+    <Button
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:text="Save"
+        android:gravity="start|center_vertical"
+        android:paddingLeft="20dp"
+        android:id="@+id/edit_group_save"
+        android:background="@drawable/ic_accept_background"
+        android:layout_marginBottom="28dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"/>
+
+</RelativeLayout>

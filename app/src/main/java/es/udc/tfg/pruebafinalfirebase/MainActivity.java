@@ -89,7 +89,7 @@ import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
 public class MainActivity extends AppCompatActivity implements Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener, GoogleMap.OnMarkerClickListener {
 
-    private String TAG = "MainActiv";
+    public static final String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
     public static final String MAP_FRAGMENT_TAG = "MAP_FRAGMENT_TAG";
     public static final String GROUPS_FRAGMENT_TAG = "GROUPS_FRAGMENT_TAG";
@@ -299,7 +299,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             startService(new Intent(MainActivity.this, es.udc.tfg.pruebafinalfirebase.mService.class));
             Log.d(TAG,"STARTING SERVICE");
         }
-        dbManager.bindDBManager(MainActivity.this);
+
+        dbManager.bindDBManager(MainActivity.this,DBManager.MODE_CREATE);
 
         MapsInitializer.initialize(getApplicationContext());
     }
@@ -309,6 +310,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         super.onStart();
         Intent intent = new Intent(this, es.udc.tfg.pruebafinalfirebase.mService.class);
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+        if(!dbManager.getDbManagerListenerContext().equals(TAG))
+            dbManager.bindDBManager(MainActivity.this,DBManager.MODE_APPEND);
     }
 
     @Override
@@ -346,6 +349,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         if(filter!=null)
             transaction.remove(filter);
         transaction.commit();
+        fragmentManager.executePendingTransactions();
         drawerFlag = LOGIN_FRAGMENT_TAG;
         pb.cancel();
     }
@@ -385,6 +389,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
             fragmentTransaction.replace(R.id.map_fragment_content, mMapFragment, MAP_FRAGMENT_TAG);
             fragmentTransaction.commit();
+            fragmentManager.executePendingTransactions();
             mMapFragment.getMapAsync(MainActivity.this);
             drawerFlag = MAP_FRAGMENT_TAG;
         }
@@ -419,6 +424,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             if(filter!=null)
                 fragmentTransaction.remove(filter);
             fragmentTransaction.commit();
+            fragmentManager.executePendingTransactions();
             drawerFlag = GROUPS_FRAGMENT_TAG;
         }
 
@@ -448,6 +454,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentTransaction.replace(R.id.map_fragment_content, editGroupFragment, EDIT_GROUP_FRAGMENT_TAG+groupId);
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
+        fragmentManager.executePendingTransactions();
 
         drawerFlag = EDIT_GROUP_FRAGMENT_TAG;
 
@@ -477,6 +484,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentTransaction.replace(R.id.map_fragment_content, messagesFragment, MESSAGES_FRAGMENT_TAG+groupId);
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
+        fragmentManager.executePendingTransactions();
 
         drawerFlag = MESSAGES_FRAGMENT_TAG;
 
@@ -506,6 +514,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentTransaction.replace(R.id.map_fragment_content, ipFragment, IP_FRAGMENT_TAG+userId+ipId);
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
+        fragmentManager.executePendingTransactions();
 
         drawerFlag = IP_FRAGMENT_TAG;
 
@@ -536,6 +545,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         fragmentTransaction.replace(R.id.map_fragment_content, settingsFragment, SETTINGS_FRAGMENT_TAG);
         fragmentTransaction.addToBackStack(null);
         fragmentTransaction.commit();
+        fragmentManager.executePendingTransactions();
 
         drawerFlag = SETTINGS_FRAGMENT_TAG;
 
@@ -553,8 +563,9 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             transaction.remove(quickMsg);
         if(requests!=null)
             transaction.remove(requests);
+        transaction.commit();
+        fragmentManager.executePendingTransactions();
     }
-
 
     private void logout(){
         pb.show();
@@ -568,6 +579,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                     }
                 });
     }
+
     private void login(){
         pb.show();
         Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleAuthApiClient);
@@ -633,6 +645,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+userId+"       "+groupId+"   ACTIVE?"+location.isActive());
 
         int index = findMarker(userId,groupId);
+        Log.d(TAG,"PASO POR AQUÍ Y EL TAMAÑO ES "+mapMarkers.size()+" y el índice es "+index);
 
         final MarkerOptions options = new MarkerOptions()
                 .position(new LatLng(location.getLat(), location.getLng()))
@@ -676,8 +689,9 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
     private int findMarker(String userId, String groupId){
         for (MapMarker marker : mapMarkers){
-            if (marker.getGroupId().equals(groupId) && marker.getUserId().equals(userId)){
-                return mapMarkers.indexOf(marker);
+            if(marker.getGroupId()!=null && marker.getUserId()!=null) {
+                if (marker.getGroupId().equals(groupId) && marker.getUserId().equals(userId))
+                    return mapMarkers.indexOf(marker);
             }
         }
         return -1;
@@ -706,6 +720,20 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         ipState = !ipState;
         for(Marker m : ipMapMarkers){
             m.setVisible(ipState);
+        }
+    }
+
+    @Override
+    public void updateFilter(){
+
+        for(MapMarker marker : mapMarkers){
+            Marker aux = marker.getMarker();
+            if(aux!=null && !marker.getGroupId().equals("")) {
+                Boolean bool = DBManager.mGroups.get(dbManager.findGroupById(marker.getGroupId()));
+                Log.d(TAG, "isActive? " +bool);
+                aux.setVisible(bool && marker.isActive());
+                marker.setMarker(aux);
+            }
         }
     }
 
@@ -760,6 +788,15 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         checkPermissions(RC_ADD_MEMBER);
     }
 
+    @Override
+    public void deleteGroup() {
+        onBackPressed();
+    }
+
+    @Override
+    public void saveChanges() {
+        onBackPressed();
+    }
 
     /****************************** SERVICE METHODS *****************************************/
 
@@ -805,7 +842,9 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         Log.d(TAG,"DBMANAGER: group changed");
         Filter_fragment filterFragment = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
         Groups_fragment groupsFragment = (Groups_fragment) fragmentManager.findFragmentByTag(GROUPS_FRAGMENT_TAG);
-        EditGroupFragment editGroupFragment = (EditGroupFragment) fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG+group.getId());
+        EditGroupFragment editGroupFragment = null;
+        if(group!=null)
+            editGroupFragment = (EditGroupFragment) fragmentManager.findFragmentByTag(EDIT_GROUP_FRAGMENT_TAG+group.getId());
         if(filterFragment!=null)
             filterFragment.updateFilter();
         if(groupsFragment!=null)
@@ -918,19 +957,6 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         }
     }
 
-    @Override
-    public void updateFilter(){
-
-        for(MapMarker marker : mapMarkers){
-            Marker aux = marker.getMarker();
-            if(aux!=null && !marker.getGroupId().equals("")) {
-                Boolean bool = DBManager.mGroups.get(dbManager.findGroupById(marker.getGroupId()));
-                Log.d(TAG, "isActive? " +bool);
-                aux.setVisible(bool && marker.isActive());
-                marker.setMarker(aux);
-            }
-        }
-    }
 
     @Override
     public void initInterestPoint(InterestPoint interestPoint, String userId, String ipId) {
@@ -1313,11 +1339,12 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 Filter_fragment existingFilter = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
                 QuickMsgFragment existingQuickmsg = (QuickMsgFragment) fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);
                 if(existingQuickmsg != null) {
-                    qmTransaction.remove(existingFilter);
+                    Log.d(TAG,"remove QM");
+                    qmTransaction.remove(existingQuickmsg);
                     if (existingFilter!=null){
+                        Log.d(TAG,"remove F");
                         qmTransaction.remove(existingFilter);
                     }
-                    qmTransaction.commit();
                     fragmentManager.popBackStack();
                     View view = this.getCurrentFocus();
                     if (view != null) {
@@ -1326,14 +1353,17 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                     }
                 } else {
                     if (existingFilter==null){
+                        Log.d(TAG,"add F");
                         Filter_fragment newFilter = Filter_fragment.newInstance(ipState);
                         qmTransaction.add(R.id.filter_fragment_content,newFilter,FILTER_FRAGMENT_TAG);
                     }
+                    Log.d(TAG,"add QM");
                     QuickMsgFragment newQuickMsg = new QuickMsgFragment();
                     qmTransaction.add(R.id.quickMsg_fragment_content,newQuickMsg,QUICKMSG_FRAGMENT_TAG);
                     qmTransaction.addToBackStack(QUICKMSG_FRAGMENT_TAG);
-                    qmTransaction.commit();
                 }
+                qmTransaction.commit();
+                fragmentManager.executePendingTransactions();
                 return true;
             case R.id.action_quickMap:
                 fragmentManager.popBackStack();

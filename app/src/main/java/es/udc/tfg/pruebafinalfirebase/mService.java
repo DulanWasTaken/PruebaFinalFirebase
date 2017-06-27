@@ -39,7 +39,7 @@ import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
 public class mService extends Service implements DBManager.DBManagerInteractions,LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
 
-    private String TAG = "MYSERVICE";
+    public static final String TAG = "MYSERVICE";
     public static final int RC_CHECK_SETTINGS = 33333;
     public static final int LOCATION_ENABLED_NOTIF = 1111;
     public static final int REQUEST_RECEIVED_NOTIF = 2222;
@@ -84,7 +84,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "onUnBind");
         bound = false;
-        dbManager.bindDBManager(mService.this);
+        dbManager.bindDBManager(mService.this,DBManager.MODE_APPEND);
         long aux = System.currentTimeMillis();
         pref.edit().putLong("lastTimeForegroud",aux).commit();
         lastTimeForeground = aux;

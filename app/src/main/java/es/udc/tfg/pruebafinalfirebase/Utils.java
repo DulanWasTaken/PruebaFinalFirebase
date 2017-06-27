@@ -55,7 +55,7 @@ public class Utils {
             else if (diff[2]==1)
                 result = ("Hace un minuto");
             else
-                result = ("Hace unos segundos");
+                result = ("Ahora");
         }
 
         return result;

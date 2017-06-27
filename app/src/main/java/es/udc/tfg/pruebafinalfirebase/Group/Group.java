@@ -13,6 +13,7 @@ public class Group {
 
     private String name;
     private ArrayList<GroupMember> membersId;
+    private ArrayList<GroupMember> invitations;
     private ArrayList<String> admins;
     private long time;
     private String id;
@@ -20,10 +21,12 @@ public class Group {
     public Group() {
     }
 
-    public Group(String name, ArrayList<GroupMember> membersId,ArrayList<String> admins) {
+    public Group(String name,String id, ArrayList<GroupMember> membersId,ArrayList<String> admins,ArrayList<GroupMember> invitations) {
         this.name = name;
+        this.id = id;
         this.membersId = membersId;
         this.admins = admins;
+        this.invitations = invitations;
         this.time = System.currentTimeMillis();
     }
 
@@ -71,11 +74,46 @@ public class Group {
         this.id = id;
     }
 
+    public ArrayList<GroupMember> getInvitations() {
+        return invitations;
+    }
+
+    public void setInvitations(ArrayList<GroupMember> invitations) {
+        this.invitations = invitations;
+    }
+
     public void addMember(GroupMember member){
         if(membersId == null)
             membersId = new ArrayList<>();
         if (!membersId.contains(member))
             membersId.add(member);
+    }
+
+    public void addInvitation(GroupMember member){
+        if(invitations == null)
+            invitations = new ArrayList<>();
+        boolean contains = false;
+        for(GroupMember m : invitations){
+            if(m.getMemberId().equals(member.getMemberId()))
+                contains = true;
+        }
+        if (!contains)
+            invitations.add(member);
+    }
+
+    public void removeInvitation(String id){
+        if(id!=null && !id.equals("")){
+            Iterator<GroupMember> iter = invitations.iterator();
+            while (iter.hasNext()) {
+                GroupMember member = iter.next();
+                if (member.getMemberId().equals(id))
+                    iter.remove();
+            }
+            /*for(GroupMember member : membersId){
+                if(member.getMemberId().equals(id))
+                    membersId.remove(member);
+            }*/
+        }
     }
 
     public void removeMember(String id){

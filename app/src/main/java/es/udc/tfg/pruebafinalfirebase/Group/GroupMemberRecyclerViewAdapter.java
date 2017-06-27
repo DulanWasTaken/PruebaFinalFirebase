@@ -25,6 +25,8 @@ import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
 
 public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMemberRecyclerViewAdapter.ViewHolder> {
     private ArrayList<GroupMember> mDataset;
+    private ArrayList<GroupMember> invitations = new ArrayList<>();
+    private boolean invitation = false;
     private ArrayList<String> admins;
     private Context context;
     private String TAG = "GroupMemberRecyclerViewAdapter";
@@ -52,6 +54,10 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
 
     public GroupMemberRecyclerViewAdapter(Group mGroup,String groupId) {
         mDataset = mGroup.getMembersId();
+
+        if(mGroup.getInvitations()!=null)
+            invitations = mGroup.getInvitations();
+
         admins = mGroup.getAdmins();
         this.groupId = groupId;
         dbManager = DBManager.getInstance();
@@ -73,16 +79,34 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
     // Replace the contents of a view (invoked by the layout manager)
     @Override
     public void onBindViewHolder(GroupMemberRecyclerViewAdapter.ViewHolder holder, final int position) {
-        GroupMember member = mDataset.get(position);
+        GroupMember member = null;
+        if(position<mDataset.size())
+            member = mDataset.get(position);
+        else {
+            member = invitations.get(position - mDataset.size());
+            invitation=true;
+        }
         holder.name.setText(member.getNick());
+        if(invitation)
+            holder.name.setEnabled(false);
         if(!admins.contains(dbManager.getId())) {
-            holder.admin.setVisibility(View.INVISIBLE);
+            if(member.getMemberId().equals(dbManager.getId()))
+                holder.admin.setVisibility(View.INVISIBLE);
             holder.deleteButton.setVisibility(View.INVISIBLE);
         }
+
         holder.deleteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                dbManager.removeMember(groupId,mDataset.get(position).getMemberId());
+                if(!invitation) {
+                    ArrayList<String> aux = new ArrayList<>();
+                    aux.add(mDataset.get(position).getMemberId());
+                    dbManager.removeMember(groupId, aux);
+                }else{
+                    ArrayList<String> aux = new ArrayList<>();
+                    aux.add(invitations.get(position-mDataset.size()).getMemberId());
+                    dbManager.cancelInvitation(groupId, aux);
+                }
             }
         });
         holder.photo.setImageDrawable(ic_contact);
@@ -91,7 +115,7 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
     // Return the size of your dataset (invoked by the layout manager)
     @Override
     public int getItemCount() {
-        return mDataset.size();
+        return mDataset.size()+invitations.size();
     }
 
 }
