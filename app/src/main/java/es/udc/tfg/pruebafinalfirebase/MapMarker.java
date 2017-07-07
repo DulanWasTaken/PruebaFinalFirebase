@@ -3,39 +3,50 @@ package es.udc.tfg.pruebafinalfirebase;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.ArrayList;
+
+import es.udc.tfg.pruebafinalfirebase.Messages.Message;
+
 /**
  * Created by Usuario on 03/03/2017.
  */
 
 public class MapMarker {
     public final static int LOCATION_MARKER = 1;
+    public final static int DESTINATION_MARKER = 2;
 
     Marker marker;
     MarkerOptions markerOptions;
-    String userId;
+    String Id;
     String groupId;
     Long time;
     int type;
     boolean active;
+    ArrayList<Message> messages;
 
     public MapMarker() {
     }
 
-    public MapMarker(Marker marker,MarkerOptions markerOptions, String userId, String groupId, int type,boolean active) {
-        this.marker = marker;
-        this.userId = userId;
+
+    public MapMarker(MarkerOptions markerOptions, String Id, String groupId, int type, boolean active, Message msg) {
+        this.marker = null;
+        this.Id = Id;
         this.groupId = groupId;
         this.type = type;
-        this.markerOptions = markerOptions;
         this.active = active;
+        this.markerOptions = markerOptions;
+        this.messages = new ArrayList<>();
+        if(msg!=null)
+            this.messages.add(msg);
     }
 
-    public MapMarker(MarkerOptions markerOptions, String userId, String groupId, int type,boolean active) {
-        this.userId = userId;
+    public MapMarker(MarkerOptions markerOptions, String Id, String groupId, int type) {
+        this.marker = null;
+        this.Id = Id;
         this.groupId = groupId;
         this.type = type;
-        this.active = active;
         this.markerOptions = markerOptions;
+        this.active = true;
     }
 
     public boolean isActive() {
@@ -54,12 +65,12 @@ public class MapMarker {
         this.marker = marker;
     }
 
-    public String getUserId() {
-        return userId;
+    public String getId() {
+        return Id;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public void setId(String id) {
+        this.Id = id;
     }
 
     public String getGroupId() {
@@ -88,5 +99,17 @@ public class MapMarker {
 
     public void setMarkerOptions(MarkerOptions markerOptions) {
         this.markerOptions = markerOptions;
+    }
+
+    public ArrayList<Message> getMessages() {
+        return messages;
+    }
+
+    public void setMessages(ArrayList<Message> messages) {
+        this.messages = messages;
+    }
+
+    public void addMessage(Message msg){
+        messages.add(msg);
     }
 }

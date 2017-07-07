@@ -61,6 +61,43 @@ public class Utils {
         return result;
     }
 
+    public static String longToShortDate(long time){
+        Date date = new Date(time);
+        SimpleDateFormat df2 = new SimpleDateFormat("dd/MM/yy");
+        String result = df2.format(date);
+
+        Date end = new Date();
+
+
+        long diffInSeconds = (end.getTime() - date.getTime()) / 1000;
+
+        long diff[] = new long[] { 0, 0, 0, 0 };
+        diff[3] = (diffInSeconds >= 60 ? diffInSeconds % 60 : diffInSeconds);
+        diff[2] = (diffInSeconds = (diffInSeconds / 60)) >= 60 ? diffInSeconds % 60 : diffInSeconds;
+        diff[1] = (diffInSeconds = (diffInSeconds / 60)) >= 24 ? diffInSeconds % 24 : diffInSeconds;
+        diff[0] = (diffInSeconds = (diffInSeconds / 24));
+
+        if (diff[0]<5){
+            if (diff[0]>1)
+                result = result;
+            else if (diff[0]==1)
+                result = result;
+            else if (diff[1]>1)
+                result = ("Today");
+            else if (diff[1]==1)
+                result = ("Today");
+            else if (diff[2]>1)
+                result = ("Now");
+            else if (diff[2]==1)
+                result = ("Now");
+            else
+                result = ("Now");
+        }
+
+        return result;
+    }
+
+
     public static String listToString (ArrayList<String> groupMembers){
         String result = "";
         for (String member : groupMembers){

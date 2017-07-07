@@ -1,11 +1,11 @@
 package es.udc.tfg.pruebafinalfirebase;
 
 import android.content.Context;
-import android.media.audiofx.AudioEffect;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
@@ -24,12 +24,12 @@ import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.Map;
 
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.Group.GroupMember;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
@@ -44,6 +44,7 @@ public class DBManager {
     private static final String DB_USER_INTERESTPOINTS_REF = "interestPoints";
     private static final String DB_GROUPS_REFERENCE = "groups";
     private static final String DB_GROUPS_MEMBERS_REFERENCE = "membersId";
+    private static final String DB_GROUPS_DESTINATIONS_REFERENCE = "destinationPoints";
     private static final String DB_MESSAGES_REFERENCE = "messages";
     private static final String DB_MESSAGES_OLDER_REFERENCE = "oldermessages";
     private static final String DB_REQUESTS_REFERENCE = "requests";
@@ -65,12 +66,14 @@ public class DBManager {
     private ChildEventListener groupMembersListener;
     private ChildEventListener groupMsgListener;
     private ValueEventListener groupRequestListener;
+    private ChildEventListener groupDestinationsListener;
     private FirebaseUser mUser;
     private User mProfile;
 
     public static ArrayList<Request> pendingRequests = new ArrayList<>();
     public static ArrayList<Group> mGroupsRequest = new ArrayList<>();
     public static LinkedHashMap<Group,Boolean> mGroups = new LinkedHashMap<>();
+    //public static ArrayList<InterestPoint> mInterestPoints = new ArrayList<>();
     public Boolean authenticated = null;
     public Boolean listenersEnabled = false;
     private String lastMsgKey = "";
@@ -205,6 +208,7 @@ public class DBManager {
 
     private void initListeners(String id){
         Log.d(TAG,"INIT listeners");
+
         DBroot.child(DB_USER_REFERENCE).child(id).child(DB_USER_GROUPS_REFERENCE).addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
@@ -292,7 +296,7 @@ public class DBManager {
                             if(dataSnapshot.exists() && dataSnapshot.getKey()!=lastMsgKey){
                                 Message msg = dataSnapshot.getValue(Message.class);
                                 if (msg!=null && mListener!=null){
-                                    Log.d(TAG," UN MSG RECIBIDO: ");
+                                    Log.d(TAG,"UN MSG RECIBIDO: "+msg.getMsg());
                                     lastMsgKey = dataSnapshot.getKey();
                                     mListener.messageReceived(groupId,msg);
                                 }
@@ -319,10 +323,49 @@ public class DBManager {
 
                         }
                     };
+                    groupDestinationsListener = new ChildEventListener() {
+                        @Override
+                        public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                            if(dataSnapshot.exists()){
+                                Point p = dataSnapshot.getValue(Point.class);
+                                if(p!=null && mListener!=null)
+                                    mListener.destinationPointAdded(p,groupId);
+                            }
+                        }
+
+                        @Override
+                        public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+                            if(dataSnapshot.exists()){
+                                Point p = dataSnapshot.getValue(Point.class);
+                                if(p!=null && mListener!=null)
+                                    mListener.destinationPointChanged(p,groupId);
+                            }
+                        }
+
+                        @Override
+                        public void onChildRemoved(DataSnapshot dataSnapshot) {
+                            if(dataSnapshot.exists()){
+                                Point p = dataSnapshot.getValue(Point.class);
+                                if(p!=null && mListener!=null)
+                                    mListener.destinationPointRemoved(p,groupId);
+                            }
+                        }
+
+                        @Override
+                        public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+
+                        }
+                    };
 
                     DBroot.child(DB_GROUPS_REFERENCE).child(groupId).addValueEventListener(groupListener);
                     DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_MEMBERS_REFERENCE).addChildEventListener(groupMembersListener);
-                    DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).addChildEventListener(groupMsgListener);
+                    DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).limitToLast(15).addChildEventListener(groupMsgListener);
+                    DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_DESTINATIONS_REFERENCE).addChildEventListener(groupDestinationsListener);
                 }
             }
 
@@ -340,6 +383,8 @@ public class DBManager {
                     DBroot.child(DB_GROUPS_REFERENCE).child(groupId).removeEventListener(groupListener);
                     DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_MEMBERS_REFERENCE).removeEventListener(groupMembersListener);
                     DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).removeEventListener(groupMsgListener);
+                    DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_DESTINATIONS_REFERENCE).removeEventListener(groupDestinationsListener);
+
                 }
             }
 
@@ -469,6 +514,50 @@ public class DBManager {
 
             }
         });
+
+        DBroot.child(DB_USER_REFERENCE).child(id).child(DB_USER_INTERESTPOINTS_REF).addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                InterestPoint ip = null;
+                if(dataSnapshot.exists())
+                    ip = dataSnapshot.getValue(InterestPoint.class);
+                if(ip!=null){
+                    if (mListener != null)
+                        mListener.interestPointAdded(ip);
+                }
+
+
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                InterestPoint ip = null;
+                if(dataSnapshot.exists())
+                    ip = dataSnapshot.getValue(InterestPoint.class);
+                if(ip!=null){
+                    //mInterestPoints.remove(ip);
+                    if (mListener != null)
+                        mListener.interestPointRemoved(ip);
+                }
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
         listenersEnabled = true;
     }
 
@@ -743,6 +832,8 @@ public class DBManager {
     }
 
     public Boolean isFiltered(String groupId){
+        if(groupId.equals(""))
+            return true;
         Group group = findGroupById(groupId);
         if(group!= null)
             return mGroups.get(group);
@@ -787,7 +878,7 @@ public class DBManager {
         if(interestPoint == null)
             DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg,type));
         else
-            DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg,interestPoint.getIpId(),interestPoint.getUserId(),type));
+            DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg,interestPoint.getIpId(),interestPoint.getUserId(),interestPoint.getLat(),interestPoint.getLng(),type));
 
     }
 
@@ -867,16 +958,18 @@ public class DBManager {
                 }
             });
             /*Group group = findGroupById(groupId);
-            group.removeMember(userId);
+            group.removeMember(Id);
             DBroot.child(DB_GROUPS_REFERENCE).child(groupId).setValue(group);*/
         }
     }
 
     /*********************************** INTEREST POINTS METHODS ******************************************/
 
-    public void createInterestPoint(String name, String description, double lat, double lng){
+    public InterestPoint createInterestPoint(String name, String description, double lat, double lng){
         DatabaseReference iPref = mProfileReference.child(DB_USER_INTERESTPOINTS_REF).push();
-        iPref.setValue(new InterestPoint(lat,lng,name,description,mUser.getUid(),iPref.getKey()));
+        InterestPoint ip = new InterestPoint(lat,lng,name,description,mUser.getUid(),iPref.getKey());
+        iPref.setValue(ip);
+        return ip;
     }
 
     public InterestPoint getInterestPoint(final String userId, final String ipId){
@@ -900,14 +993,53 @@ public class DBManager {
         return null;
     }
 
-    public void saveInterestPoint(String ipId, String name, String description){
+    public void saveInterestPoint(String ipId, InterestPoint ip){
+        String name = ip.getName();
+        String description = ip.getDescription();
+        double lat = ip.getLat();
+        double lng = ip.getLng();
         DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_INTERESTPOINTS_REF).child(ipId).child("name").setValue(name);
         DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_INTERESTPOINTS_REF).child(ipId).child("description").setValue(description);
+        DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_INTERESTPOINTS_REF).child(ipId).child("lat").setValue(lat);
+        DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_INTERESTPOINTS_REF).child(ipId).child("lng").setValue(lng);
     }
 
     public void rateInterestPoint(String userId, String ipId, Float rate){
         DBroot.child(DB_USER_REFERENCE).child(userId).child(DB_USER_INTERESTPOINTS_REF).child(ipId).child("rating").child(mUser.getUid()).setValue(rate);
 
+    }
+
+    public void deleteInterestPoint(String userId, String ipId){
+        if(userId.equals(mUser.getUid())){
+            DBroot.child(DB_USER_REFERENCE).child(userId).child(DB_USER_INTERESTPOINTS_REF).child(ipId).removeValue();
+        }
+    }
+
+    public void copyInterestPoint(InterestPoint ip){
+        DatabaseReference ref = DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_INTERESTPOINTS_REF).push();
+        String id = ref.getKey();
+        InterestPoint myIp = ip;
+        myIp.setIpId(id);
+        myIp.setUserId(mUser.getUid());
+        ref.setValue(myIp);
+    }
+
+    public void createDestinationPoint(String name, String groupId, double lat, double lng){
+
+        DatabaseReference ref = DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_DESTINATIONS_REFERENCE).push();
+        Point destinationPoint = new Point(lat,lng,name,ref.getKey());
+        ref.setValue(destinationPoint);
+    }
+
+    public void removeDestinationPoint(String groupId, ArrayList<String> ids){
+        for(String id:ids){
+            DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_DESTINATIONS_REFERENCE).child(id).removeValue();
+        }
+    }
+
+    public void editDestinationPoint(String groupId, String pId, String name, double lat, double lng){
+        Point p = new Point(lat,lng,name,pId);
+        DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_DESTINATIONS_REFERENCE).child(pId).setValue(p);
     }
 
     /*********************************** COMMUNICATION INTERFACE ******************************************/
@@ -924,5 +1056,10 @@ public class DBManager {
         void initMsgList(String groupId, ArrayList<Message> messages);
         void updateFilter();
         void initInterestPoint(InterestPoint interestPoint,String userId, String ipId);
+        void interestPointAdded(InterestPoint ip);
+        void interestPointRemoved(InterestPoint ip);
+        void destinationPointAdded(Point p, String groupId);
+        void destinationPointChanged(Point p, String groupId);
+        void destinationPointRemoved(Point p, String groupId);
     }
 }

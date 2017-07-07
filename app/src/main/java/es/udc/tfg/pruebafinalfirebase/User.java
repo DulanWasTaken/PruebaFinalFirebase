@@ -1,8 +1,9 @@
 package es.udc.tfg.pruebafinalfirebase;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 
 /**
  * Created by Usuario on 18/12/2016.

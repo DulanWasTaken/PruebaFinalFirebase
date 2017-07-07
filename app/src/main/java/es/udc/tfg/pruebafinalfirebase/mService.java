@@ -34,6 +34,8 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import java.util.ArrayList;
 
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
@@ -206,7 +208,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         editor.commit();
         dbManager.disableMyLocation();
         if(mListener!=null)
-            mListener.onMyLocationChanged(new es.udc.tfg.pruebafinalfirebase.Location(0,0,0,false));
+            mListener.onMyLocationChanged(new es.udc.tfg.pruebafinalfirebase.Location(0,0,0,0,false));
         return false;
     }
 
@@ -239,8 +241,8 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.d(TAG,"gps changing position");
-        es.udc.tfg.pruebafinalfirebase.Location myLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getLatitude(),location.getLongitude(),location.getAccuracy(),true);
+        Log.d(TAG,"gps changing position...  bearing = "+location.getBearing());
+        es.udc.tfg.pruebafinalfirebase.Location myLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getLatitude(),location.getLongitude(),location.getAccuracy(),location.getBearing(),true);
         dbManager.setLocation(myLocation);
         if(bound)
             mListener.onMyLocationChanged(myLocation);
@@ -332,6 +334,31 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
     @Override
     public void initInterestPoint(InterestPoint interestPoint, String userId, String ipId) {
+
+    }
+
+    @Override
+    public void interestPointAdded(InterestPoint ip) {
+
+    }
+
+    @Override
+    public void interestPointRemoved(InterestPoint ip) {
+
+    }
+
+    @Override
+    public void destinationPointAdded(Point p, String groupId) {
+
+    }
+
+    @Override
+    public void destinationPointChanged(Point p, String groupId) {
+
+    }
+
+    @Override
+    public void destinationPointRemoved(Point p, String groupId) {
 
     }
 }

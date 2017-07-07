@@ -87,8 +87,10 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
             invitation=true;
         }
         holder.name.setText(member.getNick());
-        if(invitation)
+        if(invitation){
             holder.name.setEnabled(false);
+            holder.admin.setVisibility(View.INVISIBLE);
+        }
         if(!admins.contains(dbManager.getId())) {
             if(member.getMemberId().equals(dbManager.getId()))
                 holder.admin.setVisibility(View.INVISIBLE);
@@ -115,7 +117,10 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
     // Return the size of your dataset (invoked by the layout manager)
     @Override
     public int getItemCount() {
-        return mDataset.size()+invitations.size();
+        int i = mDataset.size();
+        if(invitations!=null)
+            i=i+invitations.size();
+        return i;
     }
 
 }

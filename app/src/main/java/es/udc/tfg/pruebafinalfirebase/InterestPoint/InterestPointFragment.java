@@ -1,7 +1,6 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.InterestPoint;
 
 import android.content.Context;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -10,16 +9,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.RatingBar;
 import android.widget.TextView;
 
-import org.w3c.dom.Text;
-
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
+
+import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.R;
 
 
 public class InterestPointFragment extends Fragment {
@@ -33,8 +30,8 @@ public class InterestPointFragment extends Fragment {
     private EditText title_et,description_et;
     private TextView title_tv,description_tv,rating_info;
     private RatingBar ratingBar;
-    private Button save_button;
-    //private OnInterestPointFragmentInteractionListener mListener;
+    private Button save_button,delete_button, copy_button, exit_button;
+    private OnInterestPointFragmentInteractionListener mListener;
     private DBManager dbManager = DBManager.getInstance();
 
     public InterestPointFragment() {
@@ -75,14 +72,16 @@ public class InterestPointFragment extends Fragment {
         View v;
         if(userId.equals(dbManager.getId())){
             v = inflater.inflate(R.layout.fragment_interest_point_edit, container, false);
-            save_button = (Button) v.findViewById(R.id.ip_save);
-            save_button.setVisibility(View.VISIBLE);
+            save_button = (Button) v.findViewById(R.id.save_ip_button);
+            delete_button = (Button) v.findViewById(R.id.delete_ip_button);
             title_et = (EditText) v.findViewById(R.id.ip_title_et);
             description_et = (EditText) v.findViewById(R.id.ip_description_et);
             rating_info = (TextView) v.findViewById(R.id.ip_info_rating);
             ratingBar = (RatingBar) v.findViewById(R.id.ip_ratingBar);
         }else{
             v = inflater.inflate(R.layout.fragment_interest_point_view, container, false);
+            copy_button = (Button) v.findViewById(R.id.copy_ip_button);
+            exit_button = (Button) v.findViewById(R.id.exit_ip_button);
             title_tv = (TextView) v.findViewById(R.id.ip_title_tv);
             description_tv = (TextView) v.findViewById(R.id.ip_description_tv);
             ratingBar = (RatingBar) v.findViewById(R.id.ip_ratingBar2);
@@ -93,7 +92,7 @@ public class InterestPointFragment extends Fragment {
     }
 
 
-    /*@Override
+    @Override
     public void onAttach(Context context) {
         super.onAttach(context);
         if (context instanceof OnInterestPointFragmentInteractionListener) {
@@ -102,7 +101,7 @@ public class InterestPointFragment extends Fragment {
             throw new RuntimeException(context.toString()
                     + " must implement OnInterestPointFragmentInteractionListener");
         }
-    }*/
+    }
 
 
 
@@ -111,7 +110,7 @@ public class InterestPointFragment extends Fragment {
         super.onResume();
         if(userId.equals(dbManager.getId())){
             ratingBar.setIsIndicator(true);
-            InterestPoint ip = dbManager.getInterestPoint(userId,ipId);
+            final InterestPoint ip = dbManager.getInterestPoint(userId,ipId);
             Log.d(TAG,"");
             title_et.setText(ip.getName());
             description_et.setText(ip.getDescription());
@@ -125,10 +124,22 @@ public class InterestPointFragment extends Fragment {
             save_button.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
+                    final InterestPoint interestP = ip;
                     String name = title_et.getText().toString();
                     String desc = description_et.getText().toString();
+                    interestP.setName(name);
+                    interestP.setDescription(desc);
+
                     if(!name.equals("")&&!desc.equals(""))
-                        dbManager.saveInterestPoint(ipId,name,desc);
+                        dbManager.saveInterestPoint(ipId,interestP);
+                    mListener.exitIpFragment(0);
+                }
+            });
+            delete_button.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dbManager.deleteInterestPoint(userId,ipId);
+                    mListener.exitIpFragment(1);
                 }
             });
         }else{
@@ -137,7 +148,7 @@ public class InterestPointFragment extends Fragment {
         }
     }
 
-    public void onInterestPointReceived(InterestPoint ip){
+    public void onInterestPointReceived(final InterestPoint ip){
         Log.d(TAG,"IP RECEIVED WITH NAME: "+ip.getName());
         ratingBar.setIsIndicator(false);
         title_tv.setText(ip.getName());
@@ -153,6 +164,21 @@ public class InterestPointFragment extends Fragment {
                 dbManager.rateInterestPoint(userId,ipId,v);
             }
         });
+
+        copy_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dbManager.copyInterestPoint(ip);
+                mListener.copyInterestPoint(ip);
+            }
+        });
+
+        exit_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mListener.exitIpFragment(0);
+            }
+        });
     }
 
     private float meanRating(Collection<Float> ratings){
@@ -161,8 +187,9 @@ public class InterestPointFragment extends Fragment {
             sum=sum+f;
         return sum/ratings.size();
     }
-/*
+
     public interface OnInterestPointFragmentInteractionListener {
-        void onFragmentInteraction(Uri uri);
-    }*/
+        void exitIpFragment(int mode);
+        void copyInterestPoint(InterestPoint ip);
+    }
 }

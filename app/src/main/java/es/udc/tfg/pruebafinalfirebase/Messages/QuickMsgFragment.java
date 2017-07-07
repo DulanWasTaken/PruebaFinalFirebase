@@ -1,23 +1,20 @@
 package es.udc.tfg.pruebafinalfirebase.Messages;
 
 import android.content.Context;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
 
-import java.util.ArrayList;
 import java.util.Map;
 
 import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
-import es.udc.tfg.pruebafinalfirebase.InterestPoint;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.R;
 
 /**
@@ -89,7 +86,6 @@ public class QuickMsgFragment extends Fragment {
                     }
                 }
                 mListener.quickMsgSent();
-                getFragmentManager().popBackStack();
             }
         });
     }

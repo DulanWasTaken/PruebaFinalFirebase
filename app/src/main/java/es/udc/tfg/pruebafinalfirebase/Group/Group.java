@@ -2,6 +2,9 @@ package es.udc.tfg.pruebafinalfirebase.Group;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Map;
+
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 
 /**
  * Created by Usuario on 21/12/2016.
@@ -14,6 +17,7 @@ public class Group {
     private String name;
     private ArrayList<GroupMember> membersId;
     private ArrayList<GroupMember> invitations;
+    private Map<String,Point> destinationPoints;
     private ArrayList<String> admins;
     private long time;
     private String id;
@@ -27,6 +31,7 @@ public class Group {
         this.membersId = membersId;
         this.admins = admins;
         this.invitations = invitations;
+
         this.time = System.currentTimeMillis();
     }
 
@@ -129,5 +134,13 @@ public class Group {
                     membersId.remove(member);
             }*/
         }
+    }
+
+    public Map<String, Point> getDestinationPoints() {
+        return destinationPoints;
+    }
+
+    public void setDestinationPoints(Map<String, Point> destinationPoints) {
+        this.destinationPoints = destinationPoints;
     }
 }

@@ -6,7 +6,7 @@ package es.udc.tfg.pruebafinalfirebase;
 
 public class Location {
     private double lat,lng;
-    private float accurracy;
+    private float accurracy,bearing;
     private long time;
     private boolean active;
 
@@ -14,12 +14,13 @@ public class Location {
 
     }
 
-    public Location(double lat, double lng, float accurracy,boolean active){
+    public Location(double lat, double lng, float accurracy,float bearing,boolean active){
         this.lat = lat;
         this.lng = lng;
         this.accurracy = accurracy;
         this.time = System.currentTimeMillis();
         this.active = active;
+        this.bearing = bearing;
     }
 
     public double getLat() {
@@ -56,5 +57,13 @@ public class Location {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public float getBearing() {
+        return bearing;
+    }
+
+    public void setBearing(float bearing) {
+        this.bearing = bearing;
     }
 }

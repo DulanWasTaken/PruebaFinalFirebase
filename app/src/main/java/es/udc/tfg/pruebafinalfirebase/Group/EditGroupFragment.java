@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 import es.udc.tfg.pruebafinalfirebase.User;
@@ -44,7 +45,7 @@ public class EditGroupFragment extends Fragment {
     private Group group;
     private Button addMemberButton,exitGroupButton,saveChangesButton;
     private EditText editGroupName;
-    private RecyclerView groupMembersRecyclerView;
+    private RecyclerView groupMembersRecyclerView,destinationsRecyclerView;
 
     private OnEditGroupFragmentInteractionListener mListener;
 
@@ -79,6 +80,7 @@ public class EditGroupFragment extends Fragment {
         exitGroupButton = (Button) v.findViewById(R.id.exit_group_button);
         editGroupName = (EditText) v.findViewById(R.id.group_name_edit);
         groupMembersRecyclerView = (RecyclerView) v.findViewById(R.id.group_members_recycler_view);
+        destinationsRecyclerView = (RecyclerView) v.findViewById(R.id.destinations_recycler_view);
 
         return v;
     }
@@ -109,6 +111,16 @@ public class EditGroupFragment extends Fragment {
         groupMembersRecyclerView.setLayoutManager(mLayoutManager);
         groupMembersRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
         groupMembersRecyclerView.setAdapter(new GroupMemberRecyclerViewAdapter(group,groupId));
+        final RecyclerView.LayoutManager mLayoutManager2 = new LinearLayoutManager(context);
+        destinationsRecyclerView.setLayoutManager(mLayoutManager2);
+        if (group.getDestinationPoints() == null) {
+            destinationsRecyclerView.setVisibility(View.GONE);
+        }else{
+            ArrayList<Point> destinations = new ArrayList<>(group.getDestinationPoints().values());
+            destinationsRecyclerView.setAdapter(new DestinationPointsRecyclerViewAdapter(destinations,groupId));
+        }
+
+
 
         saveChangesButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -124,7 +136,7 @@ public class EditGroupFragment extends Fragment {
         });
 
         if(!group.getAdmins().contains(dbManager.getId())){
-            addMemberButton.setVisibility(View.INVISIBLE);
+            addMemberButton.setVisibility(View.GONE);
         } else if (group.getAdmins().size()==1) {
             exitGroupButton.setText("Delete Group");
         }
@@ -151,6 +163,10 @@ public class EditGroupFragment extends Fragment {
                             invitations.add(member.getMemberId());
                         }
                         dbManager.cancelInvitation(groupId,invitations);
+                    }
+                    if(group.getDestinationPoints()!=null){
+                        ArrayList<String> destinations = new ArrayList<String>(group.getDestinationPoints().keySet());
+                        dbManager.removeDestinationPoint(groupId,destinations);
                     }
                 }
                 dbManager.exitGroup(group.getId());

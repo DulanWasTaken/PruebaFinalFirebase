@@ -1,7 +1,8 @@
 package es.udc.tfg.pruebafinalfirebase.Messages;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import es.udc.tfg.pruebafinalfirebase.Group.GroupMember;
-import es.udc.tfg.pruebafinalfirebase.InterestPoint;
 
 /**
  * Created by Usuario on 18/02/2017.
@@ -16,18 +17,21 @@ public class Message {
     String msg;
     String ipId;
     String userIp;
+    double ipLat,ipLng;
     int type;
 
     public Message(){
     }
 
-    public Message(GroupMember sender,String msg,String ipId,String userIp,int type) {
+    public Message(GroupMember sender,String msg,String ipId,String userIp,double ipLat, double ipLng,int type) {
         this.sender = sender;
         this.type = type;
         this.time = System.currentTimeMillis();
         this.msg = msg;
         this.userIp = userIp;
         this.ipId = ipId;
+        this.ipLat = ipLat;
+        this.ipLng = ipLng;
     }
 
     public Message(GroupMember sender, String msg, int type) {
@@ -59,5 +63,21 @@ public class Message {
 
     public String getUserIp() {
         return userIp;
+    }
+
+    public double getIpLat() {
+        return ipLat;
+    }
+
+    public void setIpLat(double ipLat) {
+        this.ipLat = ipLat;
+    }
+
+    public double getIpLng() {
+        return ipLng;
+    }
+
+    public void setIpLng(double ipLng) {
+        this.ipLng = ipLng;
     }
 }

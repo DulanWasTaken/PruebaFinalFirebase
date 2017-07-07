@@ -12,7 +12,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
-import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
@@ -58,7 +57,6 @@ import com.google.android.gms.common.api.Status;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.GoogleMapOptions;
-import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -69,8 +67,6 @@ import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import org.w3c.dom.Text;
-
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -78,6 +74,9 @@ import es.udc.tfg.pruebafinalfirebase.Group.EditGroupFragment;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.Group.GroupsRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Group.Groups_fragment;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPointFragment;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Messages.MessagesFragment;
 import es.udc.tfg.pruebafinalfirebase.Filter.FilterRecyclerViewAdapter;
@@ -87,7 +86,7 @@ import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
-public class MainActivity extends AppCompatActivity implements Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener, GoogleMap.OnMarkerClickListener {
+public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
 
     public static final String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -122,7 +121,11 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
     public HashMap<String,Marker> markersHM = new HashMap<String,Marker>();*/
     private ArrayList<MapMarker> mapMarkers = new ArrayList<>();
     private ArrayList<Marker> ipMapMarkers = new ArrayList<>();
+    private ArrayList<Marker> otherIps = new ArrayList<>();
+
+    private LatLng dragInitPos;
     private boolean ipState = false;
+    private long lastTimeBackPressed = 0;
 
     private RelativeLayout main_content;
     private FloatingActionButton locationFab,autoZoomFab;
@@ -222,7 +225,6 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         main_content = (RelativeLayout) findViewById(R.id.main_content);
         navigationView = (NavigationView) findViewById(R.id.navigation_view);
         TextView sakdfñ = (TextView) navigationView.getHeaderView(0).findViewById(R.id.account_name);
-        sakdfñ.setText("HOLA SOY YO");
 
         /*********************** INICILIZAR LOS ONCLICKLISTENERS **************************/
 
@@ -368,8 +370,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         if (menu != null){
             menuItemShare.setEnabled(true);
             menuItemNotif.setEnabled(true);
-            menuItemShare.setVisible(true);
-            menuItemNotif.setVisible(true);
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
             menuItemFilter.setVisible(true);
             menuItemQuickmsg.setEnabled(true);
             menuItemQuickmsg.setVisible(true);
@@ -378,6 +380,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         }
         locationFab.setVisibility(View.VISIBLE);
         autoZoomFab.setVisibility(View.VISIBLE);
+        if(DBManager.pendingRequests.size()!=0)
+            menuItemNotif.setVisible(true);
 
         ab.show();
         ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
@@ -411,6 +415,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         }
         locationFab.setVisibility(View.GONE);
         autoZoomFab.setVisibility(View.GONE);
+        if(DBManager.pendingRequests.size()!=0)
+            menuItemNotif.setVisible(true);
 
         ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
         ab.setDisplayHomeAsUpEnabled(true);
@@ -509,12 +515,15 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         ab.setDefaultDisplayHomeAsUpEnabled(true);
         ab.setHomeAsUpIndicator(R.drawable.ic_action_arrow_back);
 
+        Log.d(TAG,"Seting ip fragment with user id = "+userId+" and ip id = "+ipId);
+
         InterestPointFragment ipFragment = InterestPointFragment.newInstance(ipId,userId);
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        fragmentTransaction.replace(R.id.map_fragment_content, ipFragment, IP_FRAGMENT_TAG+userId+ipId);
-        fragmentTransaction.addToBackStack(null);
-        fragmentTransaction.commit();
-        fragmentManager.executePendingTransactions();
+        FragmentManager fm = getSupportFragmentManager();
+        FragmentTransaction ft = fm.beginTransaction();
+        ft.replace(R.id.map_fragment_content, ipFragment, IP_FRAGMENT_TAG+userId+ipId);
+        ft.addToBackStack(null);
+        ft.commit();
+        //fragmentManager.executePendingTransactions();
 
         drawerFlag = IP_FRAGMENT_TAG;
 
@@ -642,18 +651,57 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
     }
 
     private void locationChanged(Location location, String userId,String nick, String groupId){
-        Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+userId+"       "+groupId+"   ACTIVE?"+location.isActive());
+        Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+"   ACTIVE?"+location.isActive());
 
         int index = findMarker(userId,groupId);
-        Log.d(TAG,"PASO POR AQUÍ Y EL TAMAÑO ES "+mapMarkers.size()+" y el índice es "+index);
 
-        final MarkerOptions options = new MarkerOptions()
+        final MarkerOptions options;
+
+
+        if(userId!=dbManager.getId())
+            options = new MarkerOptions()
                 .position(new LatLng(location.getLat(), location.getLng()))
                 .title(nick)
                 .icon(BitmapDescriptorFactory.defaultMarker(Utils.stringToHueColor(groupId)));
+        else
+            options = new MarkerOptions()
+                    .position(new LatLng(location.getLat(), location.getLng()))
+                    .rotation(location.getBearing())
+                    .title("Me")
+                    .anchor((float)0.5,(float)0.5)
+                    .flat(true)
+                    .icon(BitmapDescriptorFactory.fromResource(location.getBearing()==(float)0.0?R.drawable.ic_mylocation_nobearing:R.drawable.ic_mylocation));
 
 
-        if (index >= 0){
+        if(index==-1){
+            MapMarker mapMarker = new MapMarker(options,userId,groupId,MapMarker.LOCATION_MARKER,location.isActive(),null);
+            if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
+                Marker marker = mGoogleMap.addMarker(options);
+                marker.setVisible(location.isActive() && dbManager.isFiltered(groupId));
+                if(userId!=dbManager.getId())
+                    marker.setTag(mapMarker.getMessages());
+                mapMarker.setMarker(marker);
+            }
+            mapMarkers.add(mapMarker);
+        }else if(index >= 0 && index < mapMarkers.size()){
+            MapMarker mm = mapMarkers.get(index);
+            mm.setMarkerOptions(options);
+            mm.setActive(location.isActive());
+            Marker m = mm.getMarker();
+            if(m!=null && drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap!=null){
+                m.setPosition(new LatLng(location.getLat(),location.getLng()));
+                m.setVisible(location.isActive() && dbManager.isFiltered(groupId));
+                if(userId!=dbManager.getId())
+                    m.setTag(mm.getMessages());
+            }else if (drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap!=null){
+                Marker newM = mGoogleMap.addMarker(options);
+                newM.setVisible(location.isActive() && dbManager.isFiltered(groupId));
+                if(userId!=dbManager.getId())
+                    newM.setTag(mm.getMessages());
+                mm.setMarker(newM);
+            }
+        }
+        /*if (index >= 0){
             Log.d(TAG,"position: "+ "existe0");
             MapMarker m = mapMarkers.get(index);
             Marker marker = m.getMarker();
@@ -679,18 +727,18 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
                 Marker newMarker = mGoogleMap.addMarker(options);
                 newMarker.setVisible(location.isActive() && dbManager.isFiltered(groupId));
-                mapMarkers.add(new MapMarker(newMarker,options, userId, groupId, MapMarker.LOCATION_MARKER,location.isActive()));
+                mapMarkers.add(new MapMarker(newMarker,options, Id, groupId, MapMarker.LOCATION_MARKER,location.isActive()));
             }else{
-                mapMarkers.add(new MapMarker(options, userId, groupId, MapMarker.LOCATION_MARKER,location.isActive()));
+                mapMarkers.add(new MapMarker(options, Id, groupId, MapMarker.LOCATION_MARKER,location.isActive()));
             }
         }
-
+*/
     }
 
     private int findMarker(String userId, String groupId){
         for (MapMarker marker : mapMarkers){
-            if(marker.getGroupId()!=null && marker.getUserId()!=null) {
-                if (marker.getGroupId().equals(groupId) && marker.getUserId().equals(userId))
+            if(marker.getGroupId()!=null && marker.getId()!=null) {
+                if (marker.getGroupId().equals(groupId) && marker.getId().equals(userId))
                     return mapMarkers.indexOf(marker);
             }
         }
@@ -699,7 +747,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
     private String groupIdMarker(String markerId){
         for (MapMarker m : mapMarkers){
-            if (m.getMarker().getId().equals(markerId)){
+            if (m.getId().equals(markerId)){
                 return m.getGroupId();
             }
         }
@@ -755,12 +803,13 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             }
         }
         if(groups.equals(""))
-            Snackbar.make(view, "No groups selected", Snackbar.LENGTH_SHORT).show();
+            Snackbar.make(view, "No groups selected", Snackbar.LENGTH_LONG).show();
         else{
             groups = groups.substring(0, groups.length() - 3);
             Snackbar.make(view, "Message sent to "+groups, Snackbar.LENGTH_LONG).show();
         }
 
+        removeSecondaryViews();
     }
 
     /******************************* GROUPS FRAGMENT METHODS ***********************************/
@@ -818,6 +867,38 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         }
     }
 
+    /****************************** INTEREST POINT FRAGMENT METHODS *****************************************/
+
+    @Override
+    public void exitIpFragment(int mode) {
+        onBackPressed();
+        if(mode == 1) {
+            View view = this.getCurrentFocus();
+            if (view != null) {
+                InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            }
+            Snackbar.make(view, "Point deleted", Snackbar.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    public void copyInterestPoint(InterestPoint ip) {
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+        Snackbar.make(view, "Point copied into your profile", Snackbar.LENGTH_LONG).show();
+    }
+
+    /****************************** INFOWINDOW CHAT ADAPTER METHODS *****************************************/
+
+    @Override
+    public void onInterestPointClicked(Message msg) {
+        setIpFragment(msg.getUserIp(),msg.getIpId());
+    }
+
     /***************************** DBMANAGER METHODS ****************************************/
 
     @Override
@@ -862,10 +943,66 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
     @Override
     public void messageReceived(final String groupId, Message msg) {
-        Log.d(TAG,"DBMANAGER: message received");
+
+        if(msg.getSender().getMemberId().equals(dbManager.getId()))
+            return;
+
+        MessagesFragment messagesFragment = (MessagesFragment) fragmentManager.findFragmentByTag(MESSAGES_FRAGMENT_TAG+groupId);
+        if(messagesFragment != null)
+            messagesFragment.onMsgReceived(msg);
         final String userId = msg.getSender().getMemberId();
+        final int position = findMarker(userId,groupId);
+
+        if(position==-1){
+            final MarkerOptions options = new MarkerOptions()
+                    .position(new LatLng(0, 0))
+                    .title(msg.getSender().getNick())
+                    .icon(BitmapDescriptorFactory.defaultMarker(Utils.stringToHueColor(groupId)));
+
+            MapMarker mapMarker = new MapMarker(options,userId,groupId,MapMarker.LOCATION_MARKER,false,msg);
+            if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap!=null){
+                Marker marker = mGoogleMap.addMarker(options);
+                marker.setVisible(false);
+                marker.setTag(mapMarker.getMessages());
+                mapMarker.setMarker(marker);
+            }
+            mapMarkers.add(mapMarker);
+        }else if(position >=0 && position<mapMarkers.size()){
+            MapMarker mm = mapMarkers.get(position);
+            mm.addMessage(msg);
+            final Marker m = mm.getMarker();
+            if(m!=null){
+                m.setTag(mm.getMessages());
+                m.showInfoWindow();
+                /*new CountDownTimer(9000, 9000) {
+
+                    public void onTick(long millisUntilFinished) {
+
+                    }
+
+                    public void onFinish() {
+                        m.hideInfoWindow();
+                    }
+                }.start();*/
+            }
+        }
+
+        if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG) && msg.getType()== Message.TYPE_IP){
+            InterestPoint ip = new InterestPoint(msg.getIpLat(),msg.getIpLng(),null,null,msg.getUserIp(),msg.getIpId());
+            Marker mark = mGoogleMap.addMarker(new MarkerOptions()
+                    .position(new LatLng(msg.getIpLat(),msg.getIpLng()))
+                    .title(msg.getMsg()+"("+msg.getSender().getNick()+")")
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_pushpin_trimed2))
+                    .anchor((float)0.3,1)
+                    .visible(true));
+            mark.setTag(ip);
+            otherIps.add(mark);
+        }
+
+        /*Log.d(TAG,"DBMANAGER: message received");
+        final String Id = msg.getSender().getMemberId();
         if(drawerFlag.equals(MAP_FRAGMENT_TAG)){
-            int position = findMarker(userId,groupId);
+            int position = findMarker(Id,groupId);
             if (position < mapMarkers.size()) {
                 if (position >= 0) {
                     final Marker marker = mapMarkers.get(position).getMarker();
@@ -884,19 +1021,35 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                         }
                     }.start();
                 }
+
+                else{
+
+                    final MarkerOptions options = new MarkerOptions()
+                            .position(new LatLng(0, 0))
+                            .title(msg.getSender().getNick())
+                            .icon(BitmapDescriptorFactory.defaultMarker(Utils.stringToHueColor(groupId)));
+
+                    if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
+                        Marker newMarker = mGoogleMap.addMarker(options);
+                        newMarker.setVisible(false && dbManager.isFiltered(groupId));
+                        mapMarkers.add(new MapMarker(newMarker,options, Id, groupId, MapMarker.LOCATION_MARKER,false,msg));
+                    }else{
+                        mapMarkers.add(new MapMarker(options, Id, groupId, MapMarker.LOCATION_MARKER,false,msg));
+                    }
+
+                }
             }
-        }
-        else{
-            MessagesFragment messagesFragment = (MessagesFragment) fragmentManager.findFragmentByTag(MESSAGES_FRAGMENT_TAG+groupId);
-            if(messagesFragment != null)
-                messagesFragment.onMsgReceived(msg);
-        }
+        }*/
+
     }
 
     @Override
     public void requestReceived(Request request) {
         Log.d(TAG,"DBMANAGER: request received");
         int n = dbManager.getPendingRequests().size();
+        Fragment mainFragment = fragmentManager.findFragmentById(R.id.map_fragment_content);
+        if(n!=0 && (mainFragment instanceof Groups_fragment || mainFragment instanceof SupportMapFragment))
+            menuItemNotif.setVisible(true);
         notifications.setText(n+"");
         Notifications_fragment fragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
         if(fragment!=null)
@@ -911,6 +1064,12 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         Notifications_fragment fragment = (Notifications_fragment) fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
         if(fragment!=null)
             fragment.updateNotifs();
+        if(n==0){
+            fragmentManager.beginTransaction().remove(fragment).commit();
+            fragmentManager.executePendingTransactions();
+            menuItemNotif.setVisible(false);
+        }
+
     }
 
     @Override
@@ -957,7 +1116,6 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         }
     }
 
-
     @Override
     public void initInterestPoint(InterestPoint interestPoint, String userId, String ipId) {
         Log.d(TAG,"INICIANDO PUNTO DE INTERES");
@@ -966,37 +1124,100 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
             fragment.onInterestPointReceived(interestPoint);
     }
 
+    @Override
+    public void interestPointAdded(InterestPoint ip) {
+        Marker m = mGoogleMap.addMarker(new MarkerOptions()
+                .position(new LatLng(ip.getLat(), ip.getLng()))
+                .title(ip.getName())
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_pushpin_trimed))
+                .draggable(true)
+                .anchor((float)0.3,1)
+                .visible(ipState));
+        m.setTag(ip);
+        ipMapMarkers.add(m);
+    }
+
+    @Override
+    public void interestPointRemoved(InterestPoint ip) {
+        for(Marker marker : ipMapMarkers){
+            Object tag = marker.getTag();
+            if(tag!=null) {
+                InterestPoint interestPoint = (InterestPoint) tag;
+                if(interestPoint.equals(ip)){
+                    marker.remove();
+                    ipMapMarkers.remove(marker);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void destinationPointAdded(Point p, String groupId) {
+        int index = findMarker(p.getIpId(),groupId);
+
+        final MarkerOptions options = new MarkerOptions()
+                .position(new LatLng(p.getLat(), p.getLng()))
+                .title(p.getName())
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_destination))
+                .draggable(true)
+                .anchor((float)0.3,(float)0.9);
+
+        if(index == -1){
+            MapMarker mapMarker = new MapMarker(options,p.getIpId(),groupId,MapMarker.DESTINATION_MARKER);
+            if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
+                Marker marker = mGoogleMap.addMarker(options);
+                marker.setVisible(dbManager.isFiltered(groupId));
+                marker.setTag(p);
+                mapMarker.setMarker(marker);
+            }
+            mapMarkers.add(mapMarker);
+        }
+    }
+
+    @Override
+    public void destinationPointChanged(Point p, String groupId) {
+        int index = findMarker(p.getIpId(),groupId);
+
+        final MarkerOptions options = new MarkerOptions()
+                .position(new LatLng(p.getLat(), p.getLng()))
+                .title(p.getName())
+                .draggable(true)
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_destination))
+                .anchor((float)0.3,(float)0.9);
+
+        if(index >=0 && index < mapMarkers.size()){
+            MapMarker mapMarker = mapMarkers.get(index);
+            mapMarker.setMarkerOptions(options);
+            if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
+                mapMarker.getMarker().setPosition(new LatLng(p.getLat(),p.getLng()));
+                mapMarker.getMarker().setTitle(p.getName());
+                mapMarker.getMarker().setTag(p);
+            }
+        }
+    }
+
+    @Override
+    public void destinationPointRemoved(Point p, String groupId) {
+        int index = findMarker(p.getIpId(),groupId);
+
+        if(index >=0 && index < mapMarkers.size()){
+            MapMarker mapMarker = mapMarkers.get(index);
+            if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
+                mapMarker.getMarker().remove();
+            }
+            mapMarkers.remove(index);
+        }
+
+    }
 
     /****************************** GOOGLE MAPS METHODS **************************************/
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         googleMap.setOnMapLoadedCallback(this);
-        googleMap.setInfoWindowAdapter(new mInfoWindowAdapter(getLayoutInflater()));
+        googleMap.setInfoWindowAdapter(new mInfoWindowAdapter(getLayoutInflater(),getApplicationContext()));
         googleMap.getUiSettings().setMapToolbarEnabled(false);
-
-        googleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
-            @Override
-            public void onInfoWindowClick(Marker marker) {
-                Object tag = marker.getTag();
-                removeSecondaryViews();
-                if(tag instanceof Message){
-                    Message msg = (Message) tag;
-                    switch (msg.getType()){
-                        case Message.TYPE_TEXT:
-                            setMessagesFragment(groupIdMarker(marker.getId()));
-                            break;
-                        case Message.TYPE_IP:
-                            Log.d(TAG,"MSG IP INFOW WINDOW CLICKED     " +msg.getUserIp()+"   "+msg.getIpId());
-                            setIpFragment(msg.getUserIp(),msg.getIpId());
-                            break;
-                    }
-                } else if (tag instanceof InterestPoint){
-                    InterestPoint ip = (InterestPoint) tag;
-                    setIpFragment(ip.getUserId(),ip.getIpId());
-                }
-            }
-        });
+        googleMap.setOnInfoWindowClickListener(this);
         mGoogleMap = googleMap;
     }
 
@@ -1006,6 +1227,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         Log.d(TAG,"position: "+"map loaded");
         mGoogleMap.setOnMapLongClickListener(this);
         mGoogleMap.setOnMarkerClickListener(this);
+        mGoogleMap.setOnMarkerDragListener(this);
         mapLoaded = true;
         autoZoomFab.setEnabled(true);
         locationFab.setEnabled(true);
@@ -1017,6 +1239,11 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 Marker marker = mGoogleMap.addMarker(options);
                 Log.d(TAG,m.getGroupId());
                 marker.setVisible(dbManager.isFiltered(m.getGroupId())&& m.isActive());
+                if(m.getType() == MapMarker.LOCATION_MARKER)
+                    marker.setTag(m.getMessages());
+                else if (m.getType() == MapMarker.DESTINATION_MARKER)
+                    marker.setTag(new Point(options.getPosition().latitude,options.getPosition().longitude,options.getTitle(),m.getId()));
+
                 m.setMarker(marker);
             }
         }
@@ -1027,8 +1254,9 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 Marker m = mGoogleMap.addMarker(new MarkerOptions()
                         .position(new LatLng(ip.getLat(), ip.getLng()))
                         .title(ip.getName())
-                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.pushpin))
-                        .anchor((float)0.1,1)
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_pushpin_trimed))
+                        .draggable(true)
+                        .anchor((float)0.3,1)
                         .visible(ipState));
                 m.setTag(ip);
                 ipMapMarkers.add(m);
@@ -1071,17 +1299,36 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                             .setPositiveButton("Create", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-
+                                    InterestPoint ip = null;
                                     String name = et.getText().toString();
                                     String description = et2.getText().toString();
                                     if (!name.equals("")&&!description.equals("")){
-                                        dbManager.createInterestPoint(name,description,point.latitude,point.longitude);
+                                        ip = dbManager.createInterestPoint(name,description,point.latitude,point.longitude);
                                     }
                                 }
                             })
                             .show();
                 }else if(item == 1){
-                    Toast.makeText(MainActivity.this,"Not available yet",Toast.LENGTH_SHORT).show();
+                    final EditText et = new EditText(MainActivity.this);
+                    et.setHint("Name");
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Creating destination point")
+                            .setView(et)
+                            .setCancelable(true)
+                            .setPositiveButton("Create", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    InterestPoint ip = null;
+                                    String name = et.getText().toString();
+                                    if (!name.equals("")){
+                                        for(Map.Entry<Group,Boolean> entry : DBManager.mGroups.entrySet()){
+                                            if(entry.getValue())
+                                                dbManager.createDestinationPoint(name,entry.getKey().getId(),point.latitude,point.longitude);
+                                        }
+                                    }
+                                }
+                            })
+                            .show();
                 }else if(item == 2){
                     Toast.makeText(MainActivity.this, "Not available yet", Toast.LENGTH_SHORT).show();
                 }
@@ -1093,7 +1340,30 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
 
     @Override
     public boolean onMarkerClick(final Marker marker) {
+        marker.showInfoWindow();
         Object tag = marker.getTag();
+        if(tag instanceof ArrayList){
+            for(Marker m : otherIps){
+                m.remove();
+            }
+            otherIps.clear();
+
+            ArrayList<Message> msgs = (ArrayList<Message>) tag;
+            for(Message msg : msgs){
+                if(msg.getType()==Message.TYPE_IP){
+                    InterestPoint ip = new InterestPoint(msg.getIpLat(),msg.getIpLng(),null,null,msg.getUserIp(),msg.getIpId());
+                    Marker mark = mGoogleMap.addMarker(new MarkerOptions()
+                            .position(new LatLng(msg.getIpLat(),msg.getIpLng()))
+                            .title(msg.getMsg()+"("+msg.getSender().getNick()+")")
+                            .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_pushpin_trimed2))
+                            .anchor((float)0.3,1)
+                            .visible(true));
+                    mark.setTag(ip);
+                    otherIps.add(mark);
+                }
+
+            }
+        }
         if(tag instanceof InterestPoint) {
 
         /*marker.showInfoWindow();
@@ -1115,28 +1385,118 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                 quickMsgFragment.addIp((InterestPoint)marker.getTag());
             }
         }
-        return false;
+        return true;
+    }
+
+    @Override
+    public void onMarkerDragStart(Marker marker) {
+        dragInitPos = marker.getPosition();
+        Log.d("MARKERDRAG","START");
+    }
+
+    @Override
+    public void onMarkerDrag(Marker marker) {
+        Log.d("MARKERDRAG","WHILE");
+    }
+
+    @Override
+    public void onMarkerDragEnd(final Marker marker) {
+        Log.d("MARKERDRAG","END");
+        new AlertDialog.Builder(MainActivity.this)
+                .setTitle("Do you want to change the point position?")
+                .setCancelable(false)
+                .setPositiveButton("Change", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Object tag = marker.getTag();
+                        if(tag instanceof InterestPoint){
+                            InterestPoint ip = (InterestPoint) marker.getTag();
+                            ip.setLat(marker.getPosition().latitude);
+                            ip.setLng(marker.getPosition().longitude);
+                            dbManager.saveInterestPoint(ip.getIpId(),ip);
+                        }else if(tag instanceof Point){
+                            Point p = (Point) marker.getTag();
+                            p.setLat(marker.getPosition().latitude);
+                            p.setLng(marker.getPosition().longitude);
+                            dbManager.editDestinationPoint(groupIdMarker(p.getIpId()),p.getIpId(),p.getName(),p.getLat(),p.getLng());
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        marker.setPosition(dragInitPos);
+                        dialog.cancel();
+                    }
+                }).show();
+    }
+
+    @Override
+    public void onInfoWindowClick(Marker marker) {
+        Object tag = marker.getTag();
+        removeSecondaryViews();
+        if(tag instanceof Message){
+
+        } else if (tag instanceof InterestPoint){
+            InterestPoint ip = (InterestPoint) tag;
+            setIpFragment(ip.getUserId(),ip.getIpId());
+        } else if (tag instanceof Point){
+
+            final Point p = (Point) tag;
+            final EditText et = new EditText(MainActivity.this);
+            et.setText(p.getName());
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Edit destination point name")
+                    .setView(et)
+                    .setCancelable(true)
+                    .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String name = et.getText().toString();
+                            if (!name.equals("")){
+                                dbManager.editDestinationPoint(groupIdMarker(p.getIpId()),p.getIpId(),name,p.getLat(),p.getLng());
+                            }
+                        }
+                    })
+                    .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.cancel();
+                        }
+                    })
+                    .show();
+        }
     }
 
     /********************************* ANDROID METHODS ****************************************/
 
     @Override
     public void onBackPressed() {
-        super.onBackPressed();
+        int backStackCount = fragmentManager.getBackStackEntryCount();
+        if(backStackCount == 0){
+            if(System.currentTimeMillis()-lastTimeBackPressed<3000)
+                super.onBackPressed();
+            else{
+                lastTimeBackPressed = System.currentTimeMillis();
+                Toast.makeText(MainActivity.this,"Press back again to exit",Toast.LENGTH_LONG).show();
+            }
+        } else {
+            super.onBackPressed();
 
-        Fragment frag = fragmentManager.findFragmentById(R.id.map_fragment_content);
+            Fragment frag = fragmentManager.findFragmentById(R.id.map_fragment_content);
 
-        if(frag instanceof Groups_fragment)
-            setGroupsFragment();
-        else
-            setMapFragment();
+            if(frag instanceof Groups_fragment)
+                setGroupsFragment();
+            else
+                setMapFragment();
 
 
-        ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
-        View view = this.getCurrentFocus();
-        if (view != null) {
-            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
+            View view = this.getCurrentFocus();
+            if (view != null) {
+                InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            }
         }
     }
 
@@ -1258,6 +1618,8 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
         menuItemQuickmsg = menu.findItem(R.id.action_quickmsg);
         menuItemQuickmap = menu.findItem(R.id.action_quickMap);
         menuItemQuickmap.setVisible(false);
+        menuItemNotif.setVisible(false);
+        menuItemShare.setVisible(false);
 
         /*if(dbManager.isAuthenticated())
 
@@ -1318,20 +1680,25 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                     mDrawerLayout.openDrawer(GravityCompat.START);
                 return true;
             case R.id.action_filter:
+                //fragmentManager.executePendingTransactions();
                 FragmentTransaction transaction = fragmentManager.beginTransaction();
                 Filter_fragment existFragment = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
+                QuickMsgFragment quickMsgFragment = (QuickMsgFragment) fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);
                 if (existFragment != null){
                     transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
                     transaction.remove(existFragment);
+                    if(quickMsgFragment!=null)
+                        transaction.remove(quickMsgFragment);
                     transaction.commit();
-                    fragmentManager.popBackStack();
+                    //fragmentManager.popBackStack();
                 }else{
                     Filter_fragment fragment = Filter_fragment.newInstance(ipState);
                     transaction.add(R.id.filter_fragment_content,fragment,FILTER_FRAGMENT_TAG);
-                    transaction.addToBackStack(FILTER_FRAGMENT_TAG);
+                    ///transaction.addToBackStack(FILTER_FRAGMENT_TAG);
                     transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
                     transaction.commit();
                 }
+                fragmentManager.executePendingTransactions();
                 return true;
             case R.id.action_quickmsg:
                 FragmentTransaction qmTransaction = fragmentManager.beginTransaction();
@@ -1345,7 +1712,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                         Log.d(TAG,"remove F");
                         qmTransaction.remove(existingFilter);
                     }
-                    fragmentManager.popBackStack();
+                    //fragmentManager.popBackStack();
                     View view = this.getCurrentFocus();
                     if (view != null) {
                         InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -1360,7 +1727,7 @@ public class MainActivity extends AppCompatActivity implements Filter_fragment.O
                     Log.d(TAG,"add QM");
                     QuickMsgFragment newQuickMsg = new QuickMsgFragment();
                     qmTransaction.add(R.id.quickMsg_fragment_content,newQuickMsg,QUICKMSG_FRAGMENT_TAG);
-                    qmTransaction.addToBackStack(QUICKMSG_FRAGMENT_TAG);
+                    //qmTransaction.addToBackStack(QUICKMSG_FRAGMENT_TAG);
                 }
                 qmTransaction.commit();
                 fragmentManager.executePendingTransactions();
