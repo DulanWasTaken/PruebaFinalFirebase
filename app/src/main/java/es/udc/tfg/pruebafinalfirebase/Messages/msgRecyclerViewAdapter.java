@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import java.util.ArrayList;
 
+import es.udc.tfg.pruebafinalfirebase.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.Utils;
 
@@ -16,6 +17,7 @@ import es.udc.tfg.pruebafinalfirebase.Utils;
  */
 public class msgRecyclerViewAdapter extends RecyclerView.Adapter<msgRecyclerViewAdapter.ViewHolder> {
     private ArrayList<Message> mDataset;
+    private DBManager dbManager;
     private String TAG = "msgRecyclerViewAdapter";
 
     // Provide a reference to the views for each data item
@@ -45,6 +47,8 @@ public class msgRecyclerViewAdapter extends RecyclerView.Adapter<msgRecyclerView
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.msg_row, parent, false);
 
+        dbManager = DBManager.getInstance();
+
         msgRecyclerViewAdapter.ViewHolder vh = new msgRecyclerViewAdapter.ViewHolder(v);
         return vh;
     }
@@ -56,6 +60,8 @@ public class msgRecyclerViewAdapter extends RecyclerView.Adapter<msgRecyclerView
         // - replace the contents of the view with that element
         Message msg = mDataset.get(position);
         holder.name.setText(msg.getSender().getNick());
+        if(msg.getSender().getMemberId().equals(dbManager.getId()))
+            holder.name.setText("Me");
         holder.msg.setText(msg.getMsg());
         holder.date.setText(Utils.longToDate(msg.getTime()));
     }

@@ -89,7 +89,7 @@ public class MessagesFragment extends Fragment {
             public void onClick(View view) {
                 String msg = msgEditText.getText().toString();
                 if(!msg.equals("")){
-                    //dbManager.sendMsg(msg,groupId,Message.TYPE_TEXT);
+                    dbManager.sendMsg(msg,groupId,Message.TYPE_TEXT,null);
                 }
                 msgEditText.setText("");
             }
@@ -103,7 +103,11 @@ public class MessagesFragment extends Fragment {
     }
 
     public void onMsgReceived(Message msg){
-        adapter.addItemToDataset(msg);
+        //adapter.addItemToDataset(msg);
+        ArrayList<Message> msgs = adapter.getmDataset();
+        msgs.add(msg);
+        adapter = new msgRecyclerViewAdapter(msgs);
+        msgRecyclerView.setAdapter(adapter);
         mLayoutManager.scrollToPosition(adapter.getItemCount()-1);
     }
 }

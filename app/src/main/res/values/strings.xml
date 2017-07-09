@@ -5,4 +5,22 @@
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+
+
+    <string name="preference_high_accuracy">Priority high accuracy</string>
+    <string name="preference_balance_accuracy">Balanced accuracy / power</string>
+    <string name="preference_low_power">Priority low power</string>
+
+    <string name="preference_autozoom_button">Button</string>
+    <string name="preference_autozoom_switch">Switch</string>
+
+    <string name ="preference_infowindow_5">5 s.</string>
+    <string name ="preference_infowindow_10">10 s.</string>
+    <string name ="preference_infowindow_15">15 s.</string>
+    <string name ="preference_infowindow_indef">Indefinitely</string>
+
+    <string name = "preference_messages_10">10</string>
+    <string name = "preference_messages_15">15</string>
+    <string name = "preference_messages_20">20</string>
+    <string name = "preference_messages_50">50</string>
 </resources>

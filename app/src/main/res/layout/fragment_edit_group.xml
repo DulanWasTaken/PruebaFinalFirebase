@@ -62,6 +62,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Destination points:"
+                    android:id="@+id/destinations_text_view"
                     android:textStyle="bold"
                     android:textSize="17dp"/>
 

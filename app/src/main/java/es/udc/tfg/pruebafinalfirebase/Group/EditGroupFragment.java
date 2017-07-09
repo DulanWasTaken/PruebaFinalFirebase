@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.firebase.database.DataSnapshot;
@@ -45,6 +46,7 @@ public class EditGroupFragment extends Fragment {
     private Group group;
     private Button addMemberButton,exitGroupButton,saveChangesButton;
     private EditText editGroupName;
+    private TextView destTv;
     private RecyclerView groupMembersRecyclerView,destinationsRecyclerView;
 
     private OnEditGroupFragmentInteractionListener mListener;
@@ -81,6 +83,7 @@ public class EditGroupFragment extends Fragment {
         editGroupName = (EditText) v.findViewById(R.id.group_name_edit);
         groupMembersRecyclerView = (RecyclerView) v.findViewById(R.id.group_members_recycler_view);
         destinationsRecyclerView = (RecyclerView) v.findViewById(R.id.destinations_recycler_view);
+        destTv = (TextView) v.findViewById(R.id.destinations_text_view);
 
         return v;
     }
@@ -115,6 +118,7 @@ public class EditGroupFragment extends Fragment {
         destinationsRecyclerView.setLayoutManager(mLayoutManager2);
         if (group.getDestinationPoints() == null) {
             destinationsRecyclerView.setVisibility(View.GONE);
+            destTv.setVisibility(View.GONE);
         }else{
             ArrayList<Point> destinations = new ArrayList<>(group.getDestinationPoints().values());
             destinationsRecyclerView.setAdapter(new DestinationPointsRecyclerViewAdapter(destinations,groupId));

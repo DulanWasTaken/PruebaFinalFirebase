@@ -24,7 +24,6 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
     private ArrayList<Group> mDatasetGroups;
     private ArrayList<Boolean> mDatasetFilter;
     private DBManager dbManager;
-    private OnFilterAdapterInteractionListener mListener;
     private Context context;
     private Drawable but_checked,but_unchecked;
 
@@ -44,12 +43,6 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
     @Override
     public FilterRecyclerViewAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         this.context = parent.getContext();
-        if (context instanceof OnFilterAdapterInteractionListener) {
-            mListener = (OnFilterAdapterInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnFilterAdapterInteractionListener");
-        }
 
         but_checked = parent.getResources().getDrawable(R.drawable.filter_button_checked);
         but_unchecked = parent.getResources().getDrawable(R.drawable.filter_button_unchecked);
@@ -86,11 +79,11 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
                 ArrayList<Boolean> mDatasetFilter2 = new ArrayList<Boolean>(DBManager.mGroups.values());
                 Boolean filtered2 = mDatasetFilter2.get(position);
                 dbManager.setFilter(group,!filtered2);
-                if(filtered2)
+                /*if(filtered2)
                     b.setBackground(but_unchecked);
                 else
-                    b.setBackground(but_checked);
-                mListener.updateFilter();
+                    b.setBackground(but_checked);*/
+                //mListener.updateFilter();
             }
         });
     }
@@ -100,8 +93,4 @@ public class FilterRecyclerViewAdapter extends RecyclerView.Adapter<FilterRecycl
         return DBManager.mGroups.size();
     }
 
-    public interface OnFilterAdapterInteractionListener {
-
-        void updateFilter();
-    }
 }

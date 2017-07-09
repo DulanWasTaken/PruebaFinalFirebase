@@ -1,5 +1,6 @@
 package es.udc.tfg.pruebafinalfirebase;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -12,10 +13,12 @@ import android.location.Location;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
+import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -58,6 +61,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     private SharedPreferences pref;
     private long lastTimeForeground = 0;
     private NotificationManager mNotifyMgr;
+    private SharedPreferences appPreferences;
     private GoogleApiClient mGoogleLocateApiClient;
     private DBManager dbManager = DBManager.getInstance();
     private ArrayList<Message> pendingMsg = new ArrayList<>();
@@ -88,7 +92,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         bound = false;
         dbManager.bindDBManager(mService.this,DBManager.MODE_APPEND);
         long aux = System.currentTimeMillis();
-        pref.edit().putLong("lastTimeForegroud",aux).commit();
+        pref.edit().putLong("lastTimeForeground",aux).commit();
         lastTimeForeground = aux;
         return super.onUnbind(intent);
     }
@@ -98,6 +102,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         super.onCreate();
         Log.d(TAG, "onCreate");
 
+        appPreferences = PreferenceManager.getDefaultSharedPreferences(mService.this);
         pref = getSharedPreferences(TAG, Context.MODE_PRIVATE);
         pref.edit().putBoolean("serviceRunning",true).commit();
         lastTimeForeground = pref.getLong("lastTimeForeground",0);
@@ -111,6 +116,8 @@ public class mService extends Service implements DBManager.DBManagerInteractions
                 .build();
         mGoogleLocateApiClient.connect();
 
+        if(!dbManager.getDbManagerListenerContext().equals(MainActivity.TAG))
+            dbManager.bindDBManager(mService.this,DBManager.MODE_APPEND);
     }
 
     @Override
@@ -129,23 +136,41 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         super.onDestroy();
     }
 
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        Intent restartService = new Intent(getApplicationContext(), this.getClass());
+        restartService.setPackage(getPackageName());
+        PendingIntent restartServicePI = PendingIntent.getService(
+                getApplicationContext(), 1, restartService,
+                PendingIntent.FLAG_ONE_SHOT);
+        AlarmManager alarmService = (AlarmManager)getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+        alarmService.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() +1000, restartServicePI);
+        super.onTaskRemoved(rootIntent);
+    }
+
     public void registerClient(Context context) {
         Log.d(TAG,"onBind");
         mListener = (OnServiceInteractionListener) context;
         bound=true;
 
-        mNotifyMgr.cancel(LOCATION_ENABLED_NOTIF);
+        pendingMsg.clear();
+        mNotifyMgr.cancel(NOTIF_ID_MSG_RECEIVED);
+        mNotifyMgr.cancel(NOTIF_ID_REQ_RECEIVED);
     }
 
     public void disconnectService(){
         Log.d(TAG,"onUnBind");
 
         if(pref.getBoolean("locationEnabled",false)) {
+            Intent msgIntent = new Intent(this, MainActivity.class);
+            PendingIntent msgPIntent = PendingIntent.getActivity(this, NEW_MSG_CODE, msgIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
             NotificationCompat.Builder locEnabledNotifBuilder =
                     new NotificationCompat.Builder(getApplicationContext())
                             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                             .setContentTitle("Location")
-                            .setContentText("You are sharing your location in background");
+                            .setContentText("You are sharing your location in background")
+                            .setContentIntent(msgPIntent);
             mNotifyMgr.notify(LOCATION_ENABLED_NOTIF, locEnabledNotifBuilder.build());
         }
 
@@ -154,11 +179,21 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
     public boolean enableLocation() {
         Log.d(TAG,"ENABLE LOCATION");
-
+        int i;
+        String prior = appPreferences.getString(SettingsFragment.KEY_GPS,"");
+        if(prior.equals(getString(R.string.preference_high_accuracy))){
+            i = LocationRequest.PRIORITY_HIGH_ACCURACY;
+        }else if(prior.equals(getString(R.string.preference_balance_accuracy))){
+            i = LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY;
+        }else if(prior.equals(getString(R.string.preference_low_power))){
+            i = LocationRequest.PRIORITY_LOW_POWER;
+        } else {
+            return false;
+        }
         final LocationRequest mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(10000);
         mLocationRequest.setFastestInterval(5000);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_LOW_POWER);
+        mLocationRequest.setPriority(i);
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(mLocationRequest);
         PendingResult<LocationSettingsResult> result = LocationServices.SettingsApi.checkLocationSettings(mGoogleLocateApiClient, builder.build());
@@ -272,13 +307,14 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
     @Override
     public void messageReceived(String groupId, Message msg) {
+        lastTimeForeground = pref.getLong("lastTimeForeground",0);
         if(msg.getTime()>lastTimeForeground){
 
             pendingMsg.add(msg);
             Intent msgIntent = new Intent(this, MainActivity.class);
             PendingIntent msgPIntent = PendingIntent.getActivity(this, NEW_MSG_CODE, msgIntent, PendingIntent.FLAG_UPDATE_CURRENT);
             Notification.Builder mBuilder = new Notification.Builder(this) // builder notification
-                    .setSmallIcon(R.mipmap.main_ic_launch) // Icon to show in the Status Bar
+                    .setSmallIcon(R.drawable.ic_notif_wru) // Icon to show in the Status Bar
                     .setContentTitle("Message received") // Title to show in the Status Bar
                     .setContentIntent(msgPIntent);
             Notification.InboxStyle is = new Notification.InboxStyle();

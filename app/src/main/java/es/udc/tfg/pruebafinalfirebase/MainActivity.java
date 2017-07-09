@@ -12,6 +12,8 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.graphics.Color;
+import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
@@ -29,6 +31,7 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.preference.PreferenceManager;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -86,7 +89,7 @@ import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
-public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,FilterRecyclerViewAdapter.OnFilterAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
+public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
 
     public static final String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -116,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
     public boolean mapLoaded=false;
     public boolean myProfileCreated = false;
     public boolean myServiceRunning = false;
+    public boolean autoZoomEnabled = false;
 
     /*public ArrayList<String> myFilteredGroups = new ArrayList<>();
     public HashMap<String,Marker> markersHM = new HashMap<String,Marker>();*/
@@ -140,6 +144,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
 
     public FragmentManager fragmentManager;
     public SharedPreferences pref;
+    public SharedPreferences appPreferences;
 
     private es.udc.tfg.pruebafinalfirebase.mService mService;
     private ServiceConnection mConnection;
@@ -186,10 +191,13 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
 
         /************************** INICIALIZAR VARIABLES ***************************/
         fragmentManager = getSupportFragmentManager();
+        PreferenceManager.setDefaultValues(MainActivity.this,R.xml.preferences,false);
+        appPreferences = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
         pref = getSharedPreferences("MYSERVICE", Context.MODE_PRIVATE);
         myLocationEnabled = pref.getBoolean("locationEnabled",false);
         myProfileCreated = pref.getBoolean("profileCreated",false);
         myServiceRunning = pref.getBoolean("serviceRunning",false);
+        autoZoomEnabled = pref.getBoolean("autoZoomState",false);
 
 
 
@@ -276,23 +284,35 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
             }
         });
 
+        if(autoZoomEnabled)
+            autoZoomFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.divider_gray)));
         autoZoomFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                boolean empty = true;
-                LatLngBounds.Builder builder = new LatLngBounds.Builder();
-                for (MapMarker m : mapMarkers){
-                    final Marker marker = m.getMarker();
-                    if (marker.isVisible()) {
-                        empty=false;
-                        builder.include(marker.getPosition());
+
+                if(appPreferences.getString(SettingsFragment.KEY_AUTOZOOM,getString(R.string.preference_autozoom_button)).equals(getString(R.string.preference_autozoom_switch))){
+                    autoZoomEnabled = !autoZoomEnabled;
+                    pref.edit().putBoolean("autoZoomState",autoZoomEnabled).commit();
+                    if(autoZoomEnabled)
+                        autoZoomFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.divider_gray)));
+                    else
+                        autoZoomFab.setBackgroundTintList(ColorStateList.valueOf(Color.WHITE));
+
+                } else if(appPreferences.getString(SettingsFragment.KEY_AUTOZOOM,getString(R.string.preference_autozoom_button)).equals(getString(R.string.preference_autozoom_button))) {
+                    boolean empty = true;
+                    LatLngBounds.Builder builder = new LatLngBounds.Builder();
+                    for (MapMarker m : mapMarkers){
+                        final Marker marker = m.getMarker();
+                        if (marker.isVisible()) {
+                            empty=false;
+                            builder.include(marker.getPosition());
+                        }
+                    }
+                    if(!empty) {
+                        LatLngBounds bounds = builder.build();
+                        mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 200));
                     }
                 }
-                if(!empty) {
-                    LatLngBounds bounds = builder.build();
-                    mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 200));
-                }
-
             }
         });
 
@@ -324,6 +344,9 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
         if(mBound)
             unbindService(mConnection);
         mBound=false;
+
+        long aux = System.currentTimeMillis();
+        pref.edit().putLong("lastTimeForeground",aux).commit();
     }
 
     private void initView(){
@@ -701,6 +724,22 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                 mm.setMarker(newM);
             }
         }
+
+        if(appPreferences.getString(SettingsFragment.KEY_AUTOZOOM,getString(R.string.preference_autozoom_button)).equals(getString(R.string.preference_autozoom_switch)) && autoZoomEnabled){
+            boolean empty = true;
+            LatLngBounds.Builder builder = new LatLngBounds.Builder();
+            for (MapMarker m : mapMarkers){
+                final Marker marker = m.getMarker();
+                if (marker.isVisible()) {
+                    empty=false;
+                    builder.include(marker.getPosition());
+                }
+            }
+            if(!empty) {
+                LatLngBounds bounds = builder.build();
+                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 200));
+            }
+        }
         /*if (index >= 0){
             Log.d(TAG,"position: "+ "existe0");
             MapMarker m = mapMarkers.get(index);
@@ -771,19 +810,6 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
         }
     }
 
-    @Override
-    public void updateFilter(){
-
-        for(MapMarker marker : mapMarkers){
-            Marker aux = marker.getMarker();
-            if(aux!=null && !marker.getGroupId().equals("")) {
-                Boolean bool = DBManager.mGroups.get(dbManager.findGroupById(marker.getGroupId()));
-                Log.d(TAG, "isActive? " +bool);
-                aux.setVisible(bool && marker.isActive());
-                marker.setMarker(aux);
-            }
-        }
-    }
 
     /*************************** QUICK MESSAGE FRAGMENT METHODS ********************************/
 
@@ -944,14 +970,16 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
     @Override
     public void messageReceived(final String groupId, Message msg) {
 
-        if(msg.getSender().getMemberId().equals(dbManager.getId()))
-            return;
-
         MessagesFragment messagesFragment = (MessagesFragment) fragmentManager.findFragmentByTag(MESSAGES_FRAGMENT_TAG+groupId);
         if(messagesFragment != null)
             messagesFragment.onMsgReceived(msg);
+
+        if(msg.getSender().getMemberId().equals(dbManager.getId()))
+            return;
+
         final String userId = msg.getSender().getMemberId();
         final int position = findMarker(userId,groupId);
+        final Marker m;
 
         if(position==-1){
             final MarkerOptions options = new MarkerOptions()
@@ -970,20 +998,62 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
         }else if(position >=0 && position<mapMarkers.size()){
             MapMarker mm = mapMarkers.get(position);
             mm.addMessage(msg);
-            final Marker m = mm.getMarker();
+            m = mm.getMarker();
             if(m!=null){
                 m.setTag(mm.getMessages());
                 m.showInfoWindow();
-                /*new CountDownTimer(9000, 9000) {
 
-                    public void onTick(long millisUntilFinished) {
+                long time;
+                String infowindow_pref = appPreferences.getString(SettingsFragment.KEY_INFOWINDOW,"");
+                if(infowindow_pref.equals(getString(R.string.preference_infowindow_5))){
+                    time = 5000;
+                    new CountDownTimer(time,time){
 
-                    }
+                        @Override
+                        public void onTick(long l) {
 
-                    public void onFinish() {
-                        m.hideInfoWindow();
-                    }
-                }.start();*/
+                        }
+
+                        @Override
+                        public void onFinish() {
+                            m.hideInfoWindow();
+                        }
+                    };
+                } else if (infowindow_pref.equals(getString(R.string.preference_infowindow_10))){
+                    time = 10000;
+                    new CountDownTimer(time,time){
+
+                        @Override
+                        public void onTick(long l) {
+
+                        }
+
+                        @Override
+                        public void onFinish() {
+                            m.hideInfoWindow();
+                        }
+                    };
+                }else if (infowindow_pref.equals(getString(R.string.preference_infowindow_15))){
+                    time = 15000;
+                    new CountDownTimer(time,time){
+
+                        @Override
+                        public void onTick(long l) {
+
+                        }
+
+                        @Override
+                        public void onFinish() {
+                            m.hideInfoWindow();
+                        }
+                    };
+                }else if (infowindow_pref.equals(getString(R.string.preference_infowindow_indef))){
+
+                } else {
+
+                }
+
+
             }
         }
 
@@ -994,7 +1064,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                     .title(msg.getMsg()+"("+msg.getSender().getNick()+")")
                     .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_pushpin_trimed2))
                     .anchor((float)0.3,1)
-                    .visible(true));
+                    .visible(dbManager.isUserFiltered(msg.getUserIp())));
             mark.setTag(ip);
             otherIps.add(mark);
         }
@@ -1210,6 +1280,30 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
 
     }
 
+    @Override
+    public void updateFilter() {
+
+        for(MapMarker marker : mapMarkers){
+            Marker aux = marker.getMarker();
+            if(aux!=null && !marker.getGroupId().equals("")) {
+                Boolean bool = dbManager.isFiltered(marker.getGroupId());
+                aux.setVisible(bool && marker.isActive());
+                //marker.setMarker(aux);
+            }
+        }
+
+        for(Marker marker : otherIps){
+            InterestPoint ip = (InterestPoint) marker.getTag();
+            Boolean bool = dbManager.isUserFiltered(ip.getUserId());
+            marker.setVisible(bool);
+        }
+
+        Filter_fragment fragment = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
+        if(fragment!=null){
+            fragment.onResume();
+        }
+    }
+
     /****************************** GOOGLE MAPS METHODS **************************************/
 
     @Override
@@ -1366,8 +1460,26 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
         }
         if(tag instanceof InterestPoint) {
 
-        /*marker.showInfoWindow();
-        new CountDownTimer(5000,5000){
+            QuickMsgFragment quickMsgFragment = (QuickMsgFragment) fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);
+            if (quickMsgFragment != null) {
+                quickMsgFragment.addIp((InterestPoint)marker.getTag());
+            }
+        }
+
+        long time;
+        String infowindow_pref = appPreferences.getString(SettingsFragment.KEY_INFOWINDOW,"");
+        if(infowindow_pref.equals(getString(R.string.preference_infowindow_5))){
+            time = 5000;
+        } else if (infowindow_pref.equals(getString(R.string.preference_infowindow_10))){
+            time = 10000;
+        }else if (infowindow_pref.equals(getString(R.string.preference_infowindow_15))){
+            time = 15000;
+        }else if (infowindow_pref.equals(getString(R.string.preference_infowindow_indef))){
+            return true;
+        } else {
+            return true;
+        }
+        new CountDownTimer(time,time){
 
             @Override
             public void onTick(long l) {
@@ -1378,13 +1490,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
             public void onFinish() {
                 marker.hideInfoWindow();
             }
-        };*/
-
-            QuickMsgFragment quickMsgFragment = (QuickMsgFragment) fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);
-            if (quickMsgFragment != null) {
-                quickMsgFragment.addIp((InterestPoint)marker.getTag());
-            }
-        }
+        };
         return true;
     }
 

@@ -1,7 +1,9 @@
 package es.udc.tfg.pruebafinalfirebase;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
+import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
 
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -59,6 +61,8 @@ public class DBManager {
     private DatabaseReference mProfileReference;
     private FirebaseAuth DBauth = FirebaseAuth.getInstance();
     private DBManagerInteractions mListener;
+    private Context context;
+    private SharedPreferences appPreferences;
 
     private ValueEventListener profileCheck;
     private ValueEventListener groupListener;
@@ -364,7 +368,7 @@ public class DBManager {
 
                     DBroot.child(DB_GROUPS_REFERENCE).child(groupId).addValueEventListener(groupListener);
                     DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_MEMBERS_REFERENCE).addChildEventListener(groupMembersListener);
-                    DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).limitToLast(15).addChildEventListener(groupMsgListener);
+                    DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).limitToLast(appPreferences==null?15:Integer.parseInt(appPreferences.getString(SettingsFragment.KEY_MESSAGES,"15"))).addChildEventListener(groupMsgListener);
                     DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_DESTINATIONS_REFERENCE).addChildEventListener(groupDestinationsListener);
                 }
             }
@@ -570,7 +574,7 @@ public class DBManager {
                 return;
             }
         }
-        mGroups.put(group,true);
+        mGroups.put(group,false);
         /*Boolean found = false;
         Iterator it = mGroups.entrySet().iterator();
         while (it.hasNext()) {
@@ -641,7 +645,9 @@ public class DBManager {
     }
 
     public void bindDBManager(Context context, int mode){
+        this.context = context;
 
+        appPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         if (context instanceof DBManagerInteractions) {
             mListener = (DBManagerInteractions) context;
             Log.d(TAG,"mListener = "+mListener.toString());
@@ -663,7 +669,7 @@ public class DBManager {
         } else if (mListener instanceof mService){
             return mService.TAG;
         }
-        return null;
+        return "";
     }
 
     public void signIn(GoogleSignInAccount googlekey){
@@ -838,7 +844,17 @@ public class DBManager {
         if(group!= null)
             return mGroups.get(group);
         else
-            return true;
+            return false;
+    }
+
+    public Boolean isUserFiltered(String id){
+        for(Group group : mGroups.keySet()){
+            for(GroupMember member : group.getMembersId()){
+                if(member.getMemberId().equals(id))
+                    return mGroups.get(group);
+            }
+        }
+        return false;
     }
 
     public void acceptRequest(Request request){
@@ -852,7 +868,7 @@ public class DBManager {
 
     public void initMsgList(final String groupId){
         final ArrayList<Message> result = new ArrayList<>();
-        Query query = DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).limitToLast(15);
+        Query query = DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).limitToLast(Integer.parseInt(appPreferences.getString(SettingsFragment.KEY_MESSAGES,"15")));
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -883,7 +899,14 @@ public class DBManager {
     }
 
     public void setFilter(Group group, Boolean filter){
+        if(!appPreferences.getBoolean(SettingsFragment.KEY_FILTER,false)){
+            for(Group g : mGroups.keySet()){
+                mGroups.put(g,false);
+            }
+        }
         mGroups.put(group,filter);
+        if(mListener!=null)
+            mListener.updateFilter();
     }
 
     public void updateGroup(Group group){

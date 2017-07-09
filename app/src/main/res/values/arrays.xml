@@ -1,16 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="testarray">
-        <item>Big Buck Bunny</item>
-        <item>Elephants Dream</item>
-        <item>Sintel</item>
-        <item>Tears of Steel</item>
+    <string-array name="gps">
+        <item>@string/preference_high_accuracy</item>
+        <item>@string/preference_balance_accuracy</item>
+        <item>@string/preference_low_power</item>
     </string-array>
 
-    <string-array name="testarray2">
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>4</item>
+    <string-array name="autozoom">
+        <item>@string/preference_autozoom_button</item>
+        <item>@string/preference_autozoom_switch</item>
     </string-array>
+
+    <string-array name="infowindow">
+        <item>@string/preference_infowindow_5</item>
+        <item>@string/preference_infowindow_10</item>
+        <item>@string/preference_infowindow_15</item>
+        <item>@string/preference_infowindow_indef</item>
+    </string-array>
+
+    <string-array name="messages">
+        <item>@string/preference_messages_10</item>
+        <item>@string/preference_messages_15</item>
+        <item>@string/preference_messages_20</item>
+        <item>@string/preference_messages_50</item>
+    </string-array>
+
 </resources>
