@@ -156,7 +156,8 @@ public class InterestPointFragment extends Fragment {
         HashMap<String,Float> aux = ip.getRating();
         if(aux!=null){
             Float mRating = aux.get(dbManager.getId());
-            ratingBar.setRating(mRating);
+            if(mRating!=null)
+                ratingBar.setRating(mRating);
         }
         ratingBar.setOnRatingBarChangeListener(new RatingBar.OnRatingBarChangeListener() {
             @Override
@@ -179,6 +180,7 @@ public class InterestPointFragment extends Fragment {
                 mListener.exitIpFragment(0);
             }
         });
+        rating_info.setVisibility(View.GONE);
     }
 
     private float meanRating(Collection<Float> ratings){

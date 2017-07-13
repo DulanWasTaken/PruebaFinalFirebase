@@ -6,6 +6,7 @@
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
 
+    <string name="view_more_msgs"><u>View more</u></string>
 
     <string name="preference_high_accuracy">Priority high accuracy</string>
     <string name="preference_balance_accuracy">Balanced accuracy / power</string>

@@ -12,6 +12,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Binder;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
@@ -33,13 +34,22 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStates;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.MapsInitializer;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
 
+//import es.situm.sdk.SitumSdk;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
+import es.udc.tfg.pruebafinalfirebase.Messages.MessagesFragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
 public class mService extends Service implements DBManager.DBManagerInteractions,LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
@@ -102,6 +112,9 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         super.onCreate();
         Log.d(TAG, "onCreate");
 
+        /*SitumSdk.init(this);
+        SitumSdk.configuration().setApiKey("udc@situm.es", "dWitVupDW/5HnkOWG36Z8+q0eTtmu9bO");*/
+
         appPreferences = PreferenceManager.getDefaultSharedPreferences(mService.this);
         pref = getSharedPreferences(TAG, Context.MODE_PRIVATE);
         pref.edit().putBoolean("serviceRunning",true).commit();
@@ -118,6 +131,8 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
         if(!dbManager.getDbManagerListenerContext().equals(MainActivity.TAG))
             dbManager.bindDBManager(mService.this,DBManager.MODE_APPEND);
+
+        MapsInitializer.initialize(mService.this);
     }
 
     @Override
@@ -156,6 +171,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         pendingMsg.clear();
         mNotifyMgr.cancel(NOTIF_ID_MSG_RECEIVED);
         mNotifyMgr.cancel(NOTIF_ID_REQ_RECEIVED);
+        mNotifyMgr.cancel(LOCATION_ENABLED_NOTIF);
     }
 
     public void disconnectService(){
@@ -163,6 +179,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
         if(pref.getBoolean("locationEnabled",false)) {
             Intent msgIntent = new Intent(this, MainActivity.class);
+            msgIntent.putExtra("test",true);
             PendingIntent msgPIntent = PendingIntent.getActivity(this, NEW_MSG_CODE, msgIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
             NotificationCompat.Builder locEnabledNotifBuilder =
@@ -281,6 +298,8 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         dbManager.setLocation(myLocation);
         if(bound)
             mListener.onMyLocationChanged(myLocation);
+        else
+            locationReceived(dbManager.getId(),dbManager.getNick(),"",myLocation);
     }
 
     /*************************** DB MANAGER METHODS *********************************/
@@ -301,7 +320,40 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     }
 
     @Override
+    public void noUserFound(String contact) {
+
+    }
+
+    @Override
     public void locationReceived(String userId,String nick, String groupId, es.udc.tfg.pruebafinalfirebase.Location location) {
+        int index = dbManager.findMarker(userId,groupId);
+
+        final MarkerOptions options;
+
+
+        if(userId!=dbManager.getId())
+            options = new MarkerOptions()
+                    .position(new LatLng(location.getLat(), location.getLng()))
+                    .title(nick)
+                    .icon(BitmapDescriptorFactory.defaultMarker(Utils.stringToHueColor(groupId)));
+        else
+            options = new MarkerOptions()
+                    .position(new LatLng(location.getLat(), location.getLng()))
+                    .rotation(location.getBearing())
+                    .title("Me")
+                    .anchor((float)0.5,(float)0.5)
+                    .flat(true)
+                    .icon(BitmapDescriptorFactory.fromResource(location.getBearing()==(float)0.0?R.drawable.ic_mylocation_nobearing:R.drawable.ic_mylocation));
+
+
+        if(index==-1){
+            MapMarker mapMarker = new MapMarker(options,userId,groupId,MapMarker.LOCATION_MARKER,location.isActive(),null);
+            DBManager.mapMarkers.add(mapMarker);
+        }else if(index >= 0 && index < DBManager.mapMarkers.size()){
+            MapMarker mm = DBManager.mapMarkers.get(index);
+            mm.setMarkerOptions(options);
+            mm.setActive(location.isActive());
+        }
 
     }
 
@@ -312,6 +364,11 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
             pendingMsg.add(msg);
             Intent msgIntent = new Intent(this, MainActivity.class);
+            Bundle bundle = new Bundle();
+            bundle.putString("msgGroupId",groupId);
+            bundle.putString("msgUserId",msg.getSender().getMemberId());
+            msgIntent.putExtras(bundle);
+
             PendingIntent msgPIntent = PendingIntent.getActivity(this, NEW_MSG_CODE, msgIntent, PendingIntent.FLAG_UPDATE_CURRENT);
             Notification.Builder mBuilder = new Notification.Builder(this) // builder notification
                     .setSmallIcon(R.drawable.ic_notif_wru) // Icon to show in the Status Bar
@@ -328,6 +385,28 @@ public class mService extends Service implements DBManager.DBManagerInteractions
                 mNotifyMgr.notify(NOTIF_ID_MSG_RECEIVED,mBuilder.build());
 
         }
+
+
+        if(msg.getSender().getMemberId().equals(dbManager.getId()))
+            return;
+
+        final String userId = msg.getSender().getMemberId();
+        final int position = dbManager.findMarker(userId,groupId);
+        final Marker m;
+
+        if(position==-1){
+            final MarkerOptions options = new MarkerOptions()
+                    .position(new LatLng(0, 0))
+                    .title(msg.getSender().getNick())
+                    .icon(BitmapDescriptorFactory.defaultMarker(Utils.stringToHueColor(groupId)));
+
+            MapMarker mapMarker = new MapMarker(options,userId,groupId,MapMarker.LOCATION_MARKER,false,msg);
+            DBManager.mapMarkers.add(mapMarker);
+        }else if(position >=0 && position<DBManager.mapMarkers.size()){
+            MapMarker mm = DBManager.mapMarkers.get(position);
+            mm.addMessage(msg);
+        }
+
     }
 
     @Override

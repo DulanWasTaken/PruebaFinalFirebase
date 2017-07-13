@@ -125,4 +125,15 @@ public class Utils {
         Color.RGBToHSV(red, green, blue, hsv);
         return hsv[0];
     }
+
+    public static float[] stringToHSVColor(String str){
+        int hash = str.hashCode();
+        int red = (hash & 0xFF0000) >> 16;
+        int green = (hash & 0x00FF00) >> 8;
+        int blue = hash & 0x0000FF;
+
+        float[] hsv = new float[3];
+        Color.RGBToHSV(red, green, blue, hsv);
+        return hsv;
+    }
 }

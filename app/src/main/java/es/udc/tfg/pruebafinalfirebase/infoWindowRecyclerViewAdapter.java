@@ -9,6 +9,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import es.udc.tfg.pruebafinalfirebase.Group.GroupsRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
@@ -19,7 +20,7 @@ import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 
 public class infoWindowRecyclerViewAdapter extends RecyclerView.Adapter<infoWindowRecyclerViewAdapter.ViewHolder> {
 
-    private ArrayList<Message> mDataset;
+    private List<Message> mDataset;
     private onMapChatAdapterInteractionListener mListener;
 
     public class ViewHolder extends RecyclerView.ViewHolder {
@@ -34,7 +35,7 @@ public class infoWindowRecyclerViewAdapter extends RecyclerView.Adapter<infoWind
         }
     }
 
-    public infoWindowRecyclerViewAdapter(ArrayList<Message> msgs){
+    public infoWindowRecyclerViewAdapter(List<Message> msgs){
         mDataset = msgs;
     }
 

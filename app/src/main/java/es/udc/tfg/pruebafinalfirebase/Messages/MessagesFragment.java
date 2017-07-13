@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 
 import java.util.ArrayList;
 
@@ -31,7 +32,7 @@ public class MessagesFragment extends Fragment {
     private LinearLayoutManager mLayoutManager;
     private msgRecyclerViewAdapter adapter;
     private EditText msgEditText;
-    private Button msgButton;
+    private ImageButton msgButton;
     private DBManager dbManager;
 
 
@@ -61,7 +62,7 @@ public class MessagesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_messages, container, false);
-        msgButton = (Button) v.findViewById(R.id.send_message_button);
+        msgButton = (ImageButton) v.findViewById(R.id.send_message_button);
         msgEditText = (EditText)v.findViewById(R.id.send_message_edittext);
         msgRecyclerView= (RecyclerView) v.findViewById(R.id.messages_recycler_view);
 
@@ -80,9 +81,8 @@ public class MessagesFragment extends Fragment {
 
         mLayoutManager = new LinearLayoutManager(context);
         msgRecyclerView.setLayoutManager(mLayoutManager);
-        msgRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
 
-        dbManager.initMsgList(groupId);
+        dbManager.initMsgList(groupId,0);
 
         msgButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -97,7 +97,7 @@ public class MessagesFragment extends Fragment {
     }
 
     public void initList(ArrayList<Message> messages){
-        adapter = new msgRecyclerViewAdapter(messages);
+        adapter = new msgRecyclerViewAdapter(messages,groupId);
         msgRecyclerView.setAdapter(adapter);
         mLayoutManager.scrollToPosition(adapter.getItemCount()-1);
     }
@@ -106,7 +106,7 @@ public class MessagesFragment extends Fragment {
         //adapter.addItemToDataset(msg);
         ArrayList<Message> msgs = adapter.getmDataset();
         msgs.add(msg);
-        adapter = new msgRecyclerViewAdapter(msgs);
+        adapter = new msgRecyclerViewAdapter(msgs,groupId);
         msgRecyclerView.setAdapter(adapter);
         mLayoutManager.scrollToPosition(adapter.getItemCount()-1);
     }

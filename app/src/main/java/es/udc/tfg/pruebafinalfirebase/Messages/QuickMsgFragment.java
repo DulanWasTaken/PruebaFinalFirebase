@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.RelativeLayout;
 
 import java.util.Map;
 
@@ -76,6 +77,7 @@ public class QuickMsgFragment extends Fragment {
             @Override
             public void onClick(View view) {
                 Log.d(TAG,"sending "+sendingIp);
+                String groups = "";
                 for(Map.Entry<Group,Boolean> entry : DBManager.mGroups.entrySet()){
                     //Log.d(TAG,entry.getKey().getName()+": "+entry.getValue());
                     if (entry.getValue() && !msgEditText.getText().toString().equals("")){
@@ -83,9 +85,14 @@ public class QuickMsgFragment extends Fragment {
                             dbManager.sendMsg(msgEditText.getText().toString(),entry.getKey().getId(),Message.TYPE_TEXT,null);
                         else
                             dbManager.sendMsg(msgEditText.getText().toString(),entry.getKey().getId(),Message.TYPE_IP,sendingIp);
+
+                        groups = groups + entry.getKey().getName();
+                        groups = groups + ", ";
                     }
                 }
-                mListener.quickMsgSent();
+                if(!groups.equals(""))
+                    groups.substring(0,groups.length()-3);
+                mListener.quickMsgSent(groups);
             }
         });
     }
@@ -108,6 +115,6 @@ public class QuickMsgFragment extends Fragment {
     }
 
     public interface OnQuickMsgFragmentInteractionListener {
-        public void quickMsgSent();
+        public void quickMsgSent(String groups);
     }
 }

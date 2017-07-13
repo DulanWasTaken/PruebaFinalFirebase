@@ -64,7 +64,7 @@
 
         <ListPreference
             android:key="messages_preference"
-            android:title="Messages load on chat"
+            android:title="Messages loaded on chat"
             android:summary="%s"
             android:entries="@array/messages"
             android:entryValues="@array/messages"

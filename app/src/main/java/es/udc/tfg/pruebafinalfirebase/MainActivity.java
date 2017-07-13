@@ -85,11 +85,12 @@ import es.udc.tfg.pruebafinalfirebase.Messages.MessagesFragment;
 import es.udc.tfg.pruebafinalfirebase.Filter.FilterRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Filter.Filter_fragment;
 import es.udc.tfg.pruebafinalfirebase.Messages.QuickMsgFragment;
+import es.udc.tfg.pruebafinalfirebase.Messages.msgRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
-public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
+public class MainActivity extends AppCompatActivity implements msgRecyclerViewAdapter.OnMsgAdapterInteractionListener,GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
 
     public static final String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -123,9 +124,9 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
 
     /*public ArrayList<String> myFilteredGroups = new ArrayList<>();
     public HashMap<String,Marker> markersHM = new HashMap<String,Marker>();*/
-    private ArrayList<MapMarker> mapMarkers = new ArrayList<>();
-    private ArrayList<Marker> ipMapMarkers = new ArrayList<>();
     private ArrayList<Marker> otherIps = new ArrayList<>();
+    private ArrayList<Marker> ipMapMarkers = new ArrayList<>();
+    private Bundle bundle;
 
     private LatLng dragInitPos;
     private boolean ipState = false;
@@ -185,7 +186,6 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .addApi(AppInvite.API)
                 .build();
-
 
 
 
@@ -301,7 +301,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                 } else if(appPreferences.getString(SettingsFragment.KEY_AUTOZOOM,getString(R.string.preference_autozoom_button)).equals(getString(R.string.preference_autozoom_button))) {
                     boolean empty = true;
                     LatLngBounds.Builder builder = new LatLngBounds.Builder();
-                    for (MapMarker m : mapMarkers){
+                    for (MapMarker m : DBManager.mapMarkers){
                         final Marker marker = m.getMarker();
                         if (marker.isVisible()) {
                             empty=false;
@@ -349,6 +349,20 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
         pref.edit().putLong("lastTimeForeground",aux).commit();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Bundle bundle = getIntent().getExtras();
+
+        if(bundle!=null){
+            this.bundle = bundle;
+            String groupId = bundle.getString("msgGroupId","");
+            if(!groupId.equals(""))
+                dbManager.setFilter(dbManager.findGroupById(groupId),true);
+        }
+
+    }
+
     private void initView(){
         if(dbManager.isAuthenticated()){
             TextView account_name = (TextView) navigationView.getHeaderView(0).findViewById(R.id.account_name);
@@ -390,6 +404,8 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                 .build();
         mapOptions.camera(cameraPosition);
 
+        navigationView.setCheckedItem(R.id.drawer_map);
+
         if (menu != null){
             menuItemShare.setEnabled(true);
             menuItemNotif.setEnabled(true);
@@ -425,6 +441,8 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
     }
 
     private void setGroupsFragment(){
+        navigationView.setCheckedItem(R.id.drawer_groups);
+
         if (menu != null){
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
@@ -554,6 +572,8 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
     }
 
     private void setSettingsFragment(){
+        navigationView.setCheckedItem(R.id.drawer_settings);
+
         if (menu != null){
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
@@ -676,7 +696,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
     private void locationChanged(Location location, String userId,String nick, String groupId){
         Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+"   ACTIVE?"+location.isActive());
 
-        int index = findMarker(userId,groupId);
+        int index = dbManager.findMarker(userId,groupId);
 
         final MarkerOptions options;
 
@@ -705,9 +725,9 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                     marker.setTag(mapMarker.getMessages());
                 mapMarker.setMarker(marker);
             }
-            mapMarkers.add(mapMarker);
-        }else if(index >= 0 && index < mapMarkers.size()){
-            MapMarker mm = mapMarkers.get(index);
+            DBManager.mapMarkers.add(mapMarker);
+        }else if(index >= 0 && index < DBManager.mapMarkers.size()){
+            MapMarker mm = DBManager.mapMarkers.get(index);
             mm.setMarkerOptions(options);
             mm.setActive(location.isActive());
             Marker m = mm.getMarker();
@@ -728,7 +748,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
         if(appPreferences.getString(SettingsFragment.KEY_AUTOZOOM,getString(R.string.preference_autozoom_button)).equals(getString(R.string.preference_autozoom_switch)) && autoZoomEnabled){
             boolean empty = true;
             LatLngBounds.Builder builder = new LatLngBounds.Builder();
-            for (MapMarker m : mapMarkers){
+            for (MapMarker m : DBManager.mapMarkers){
                 final Marker marker = m.getMarker();
                 if (marker.isVisible()) {
                     empty=false;
@@ -774,18 +794,8 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
 */
     }
 
-    private int findMarker(String userId, String groupId){
-        for (MapMarker marker : mapMarkers){
-            if(marker.getGroupId()!=null && marker.getId()!=null) {
-                if (marker.getGroupId().equals(groupId) && marker.getId().equals(userId))
-                    return mapMarkers.indexOf(marker);
-            }
-        }
-        return -1;
-    }
-
     private String groupIdMarker(String markerId){
-        for (MapMarker m : mapMarkers){
+        for (MapMarker m : DBManager.mapMarkers){
             if (m.getId().equals(markerId)){
                 return m.getGroupId();
             }
@@ -814,28 +824,27 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
     /*************************** QUICK MESSAGE FRAGMENT METHODS ********************************/
 
     @Override
-    public void quickMsgSent(){
+    public void quickMsgSent(String groups){
         View view = this.getCurrentFocus();
         if (view != null) {
             InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
 
-        String groups = "";
-        for(Map.Entry<Group,Boolean> entry : DBManager.mGroups.entrySet()){
-            if(entry.getValue()) {
-                groups = groups + entry.getKey().getName();
-                groups = groups + ", ";
-            }
-        }
         if(groups.equals(""))
             Snackbar.make(view, "No groups selected", Snackbar.LENGTH_LONG).show();
         else{
-            groups = groups.substring(0, groups.length() - 3);
             Snackbar.make(view, "Message sent to "+groups, Snackbar.LENGTH_LONG).show();
         }
 
         removeSecondaryViews();
+    }
+
+    /****************************** MESSAGES ADAPTER METHODS ***********************************/
+
+    @Override
+    public void ipClicked(Message msg) {
+        setIpFragment(msg.getUserIp(),msg.getIpId());
     }
 
     /******************************* GROUPS FRAGMENT METHODS ***********************************/
@@ -962,6 +971,12 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
     }
 
     @Override
+    public void noUserFound(String contact) {
+        View view = this.getCurrentFocus();
+        Snackbar.make(view, "User "+contact+" not found", Snackbar.LENGTH_SHORT).show();
+    }
+
+    @Override
     public void locationReceived(String userId,String nick, String groupId, Location location) {
         Log.d(TAG,"DBMANAGER: location received");
         locationChanged(location,userId,nick,groupId);
@@ -978,7 +993,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
             return;
 
         final String userId = msg.getSender().getMemberId();
-        final int position = findMarker(userId,groupId);
+        final int position = dbManager.findMarker(userId,groupId);
         final Marker m;
 
         if(position==-1){
@@ -994,9 +1009,9 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                 marker.setTag(mapMarker.getMessages());
                 mapMarker.setMarker(marker);
             }
-            mapMarkers.add(mapMarker);
-        }else if(position >=0 && position<mapMarkers.size()){
-            MapMarker mm = mapMarkers.get(position);
+            DBManager.mapMarkers.add(mapMarker);
+        }else if(position >=0 && position<DBManager.mapMarkers.size()){
+            MapMarker mm = DBManager.mapMarkers.get(position);
             mm.addMessage(msg);
             m = mm.getMarker();
             if(m!=null){
@@ -1223,7 +1238,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
 
     @Override
     public void destinationPointAdded(Point p, String groupId) {
-        int index = findMarker(p.getIpId(),groupId);
+        int index = dbManager.findMarker(p.getIpId(),groupId);
 
         final MarkerOptions options = new MarkerOptions()
                 .position(new LatLng(p.getLat(), p.getLng()))
@@ -1240,13 +1255,13 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                 marker.setTag(p);
                 mapMarker.setMarker(marker);
             }
-            mapMarkers.add(mapMarker);
+            DBManager.mapMarkers.add(mapMarker);
         }
     }
 
     @Override
     public void destinationPointChanged(Point p, String groupId) {
-        int index = findMarker(p.getIpId(),groupId);
+        int index = dbManager.findMarker(p.getIpId(),groupId);
 
         final MarkerOptions options = new MarkerOptions()
                 .position(new LatLng(p.getLat(), p.getLng()))
@@ -1255,8 +1270,8 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                 .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_destination))
                 .anchor((float)0.3,(float)0.9);
 
-        if(index >=0 && index < mapMarkers.size()){
-            MapMarker mapMarker = mapMarkers.get(index);
+        if(index >=0 && index < DBManager.mapMarkers.size()){
+            MapMarker mapMarker = DBManager.mapMarkers.get(index);
             mapMarker.setMarkerOptions(options);
             if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
                 mapMarker.getMarker().setPosition(new LatLng(p.getLat(),p.getLng()));
@@ -1268,14 +1283,14 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
 
     @Override
     public void destinationPointRemoved(Point p, String groupId) {
-        int index = findMarker(p.getIpId(),groupId);
+        int index = dbManager.findMarker(p.getIpId(),groupId);
 
-        if(index >=0 && index < mapMarkers.size()){
-            MapMarker mapMarker = mapMarkers.get(index);
+        if(index >=0 && index < DBManager.mapMarkers.size()){
+            MapMarker mapMarker = DBManager.mapMarkers.get(index);
             if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
                 mapMarker.getMarker().remove();
             }
-            mapMarkers.remove(index);
+            DBManager.mapMarkers.remove(index);
         }
 
     }
@@ -1283,7 +1298,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
     @Override
     public void updateFilter() {
 
-        for(MapMarker marker : mapMarkers){
+        for(MapMarker marker : DBManager.mapMarkers){
             Marker aux = marker.getMarker();
             if(aux!=null && !marker.getGroupId().equals("")) {
                 Boolean bool = dbManager.isFiltered(marker.getGroupId());
@@ -1327,7 +1342,7 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
         locationFab.setEnabled(true);
 
 
-        for(MapMarker m: mapMarkers){
+        for(MapMarker m: DBManager.mapMarkers){
             if(m!=null){
                 MarkerOptions options = m.getMarkerOptions();
                 Marker marker = mGoogleMap.addMarker(options);
@@ -1356,6 +1371,17 @@ public class MainActivity extends AppCompatActivity implements GoogleMap.OnInfoW
                 ipMapMarkers.add(m);
             }
 
+
+        if(bundle!=null){
+            String userId = bundle.getString("msgUserId","");
+            String groupId = bundle.getString("msgGroupId","");
+            Log.d("NOTIFICATIONLALA", userId + "    "+groupId);
+            if(!userId.equals("") && !groupId.equals("")) {
+                int i = dbManager.findMarker(userId,groupId);
+                onMarkerClick(DBManager.mapMarkers.get(i).getMarker());
+            }
+            bundle = null;
+        }
     }
 
     @Override

@@ -12,6 +12,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.Marker;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
@@ -41,7 +42,8 @@ public class mInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
     public View getInfoContents(Marker marker) {
         Object tag = marker.getTag();
         if (tag instanceof ArrayList) {
-            ArrayList<Message> msgs = (ArrayList<Message>) tag;
+            ArrayList<Message> aux = (ArrayList<Message>) tag;
+            List<Message> msgs = aux.subList(Math.max(aux.size() - 4, 0), aux.size());
             View myContentsViewText = inflater.inflate(R.layout.info_window_adapter, null);
             TextView titleText = (TextView) myContentsViewText.findViewById(R.id.info_window_title_tv);
             RecyclerView recyclerView = (RecyclerView) myContentsViewText.findViewById(R.id.infowWindow_recyclerView);

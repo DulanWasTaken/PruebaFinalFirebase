@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
@@ -77,6 +78,7 @@ public class DBManager {
     public static ArrayList<Request> pendingRequests = new ArrayList<>();
     public static ArrayList<Group> mGroupsRequest = new ArrayList<>();
     public static LinkedHashMap<Group,Boolean> mGroups = new LinkedHashMap<>();
+    public static ArrayList<MapMarker> mapMarkers = new ArrayList<>();
     //public static ArrayList<InterestPoint> mInterestPoints = new ArrayList<>();
     public Boolean authenticated = null;
     public Boolean listenersEnabled = false;
@@ -767,7 +769,8 @@ public class DBManager {
         mGroups.add(groupId);
         mProfileReference.child(DB_USER_GROUPS_REFERENCE).setValue(mGroups);
 
-        for(String contact : contacts){
+        for(String aux : contacts){
+            final String contact = aux;
             DBroot.child(DB_PUBLICID_REFERENCE).child(contact).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
@@ -778,7 +781,8 @@ public class DBManager {
                             String reqId = reqRef.getKey();
                             reqRef.setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP,reqId));
                         }
-                    }
+                    } else if(mListener!=null)
+                        mListener.noUserFound(contact);
                 }
 
                 @Override
@@ -866,9 +870,9 @@ public class DBManager {
         DBroot.child(DB_REQUESTS_REFERENCE).child(mProfile.getRequest()).child(request.getId()).removeValue();
     }
 
-    public void initMsgList(final String groupId){
+    public void initMsgList(final String groupId, int i){
         final ArrayList<Message> result = new ArrayList<>();
-        Query query = DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).limitToLast(Integer.parseInt(appPreferences.getString(SettingsFragment.KEY_MESSAGES,"15")));
+        Query query = DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).limitToLast(Integer.parseInt(appPreferences.getString(SettingsFragment.KEY_MESSAGES,"15"))+i);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -920,7 +924,8 @@ public class DBManager {
     }
 
     public void addMembers(final String groupId, ArrayList<String> members){
-        for(String contact : members){
+        for(String aux : members){
+            final String contact = aux;
             DBroot.child(DB_PUBLICID_REFERENCE).child(contact).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
@@ -931,7 +936,8 @@ public class DBManager {
                             String reqId = reqRef.getKey();
                             reqRef.setValue(new Request(groupId,Request.REQUEST_TYPE_GROUP,reqId));
                         }
-                    }
+                    } else if(mListener!=null)
+                        mListener.noUserFound(contact);
                 }
 
                 @Override
@@ -987,6 +993,16 @@ public class DBManager {
     }
 
     /*********************************** INTEREST POINTS METHODS ******************************************/
+
+    public int findMarker(String userId, String groupId){
+        for (MapMarker marker : mapMarkers){
+            if(marker.getGroupId()!=null && marker.getId()!=null) {
+                if (marker.getGroupId().equals(groupId) && marker.getId().equals(userId))
+                    return mapMarkers.indexOf(marker);
+            }
+        }
+        return -1;
+    }
 
     public InterestPoint createInterestPoint(String name, String description, double lat, double lng){
         DatabaseReference iPref = mProfileReference.child(DB_USER_INTERESTPOINTS_REF).push();
@@ -1071,6 +1087,7 @@ public class DBManager {
         void signedIn();
         void signedOut();
         void groupChanged(Group group);
+        void noUserFound(String contact);
         void locationReceived(String userId,String nick, String groupId, Location location);
         void messageReceived(String groupId, Message msg);
         void requestReceived(Request request);
