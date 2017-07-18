@@ -85,6 +85,7 @@ public class InterestPointFragment extends Fragment {
             title_tv = (TextView) v.findViewById(R.id.ip_title_tv);
             description_tv = (TextView) v.findViewById(R.id.ip_description_tv);
             ratingBar = (RatingBar) v.findViewById(R.id.ip_ratingBar2);
+            rating_info = (TextView) v.findViewById(R.id.ip_info_rating2);
         }
 
 

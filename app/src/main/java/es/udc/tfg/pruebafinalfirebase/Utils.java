@@ -5,6 +5,8 @@ import android.graphics.Color;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Created by Usuario on 19/12/2016.
@@ -64,7 +66,10 @@ public class Utils {
     public static String longToShortDate(long time){
         Date date = new Date(time);
         SimpleDateFormat df2 = new SimpleDateFormat("dd/MM/yy");
+        SimpleDateFormat dfHours = new SimpleDateFormat("hh:mm");
+        //dfHours.setTimeZone(TimeZone.getTimeZone("GTM"));
         String result = df2.format(date);
+        String hours = dfHours.format(date);
 
         Date end = new Date();
 
@@ -81,13 +86,13 @@ public class Utils {
             if (diff[0]>1)
                 result = result;
             else if (diff[0]==1)
-                result = result;
+                result = ("Yesterday");
             else if (diff[1]>1)
-                result = ("Today");
+                result = hours;
             else if (diff[1]==1)
-                result = ("Today");
+                result = hours;
             else if (diff[2]>1)
-                result = ("Now");
+                result = hours;
             else if (diff[2]==1)
                 result = ("Now");
             else

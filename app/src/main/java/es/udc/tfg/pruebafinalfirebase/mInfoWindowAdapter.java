@@ -1,6 +1,8 @@
 package es.udc.tfg.pruebafinalfirebase;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.support.v7.preference.PreferenceManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -27,10 +29,12 @@ public class mInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
 
     LayoutInflater inflater;
     Context context;
+    SharedPreferences appPreferences;
 
     public mInfoWindowAdapter(LayoutInflater inflater, Context context){
         this.inflater = inflater;
         this.context = context;
+        appPreferences = PreferenceManager.getDefaultSharedPreferences(context);
     }
     @Override
     public View getInfoWindow(Marker marker) {
@@ -43,7 +47,7 @@ public class mInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
         Object tag = marker.getTag();
         if (tag instanceof ArrayList) {
             ArrayList<Message> aux = (ArrayList<Message>) tag;
-            List<Message> msgs = aux.subList(Math.max(aux.size() - 4, 0), aux.size());
+            List<Message> msgs = aux.subList(Math.max(aux.size() - Integer.parseInt(appPreferences.getString(SettingsFragment.KEY_INFOWINDOW_MESSAGES,"4")), 0), aux.size());
             View myContentsViewText = inflater.inflate(R.layout.info_window_adapter, null);
             TextView titleText = (TextView) myContentsViewText.findViewById(R.id.info_window_title_tv);
             RecyclerView recyclerView = (RecyclerView) myContentsViewText.findViewById(R.id.infowWindow_recyclerView);

@@ -57,9 +57,10 @@ public class Group {
 
     public ArrayList<String> getMembersNick(){
         ArrayList<String> result = new ArrayList<>();
-        for(GroupMember member : membersId){
-            result.add(member.getNick());
-        }
+        if(membersId!=null)
+            for(GroupMember member : membersId)
+                result.add(member.getNick());
+
         return result;
     }
 

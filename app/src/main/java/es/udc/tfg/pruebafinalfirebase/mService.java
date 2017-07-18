@@ -305,7 +305,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     /*************************** DB MANAGER METHODS *********************************/
 
     @Override
-    public void signedIn() {
+    public void signedIn(es.udc.tfg.pruebafinalfirebase.Location lastLocation) {
 
     }
 
@@ -419,7 +419,9 @@ public class mService extends Service implements DBManager.DBManagerInteractions
                 .setContentIntent(requestPIntent);
         Notification.InboxStyle is = new Notification.InboxStyle();
         for(Request r : DBManager.pendingRequests){
-            is.addLine("Invitation to group ["+dbManager.findGroupByRequest(r.getIdGroup()).getName()+"]");
+            Group g = dbManager.findGroupByRequest(r.getIdGroup());
+            if(g!=null)
+                is.addLine("Invitation to group ["+g.getName()+"]");
         }
         String summ = DBManager.pendingRequests.size()>1? "new requests":"new request";
         is.setSummaryText(DBManager.pendingRequests.size()+" "+summ);

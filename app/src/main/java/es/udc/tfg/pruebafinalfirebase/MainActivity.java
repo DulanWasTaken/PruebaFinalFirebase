@@ -90,7 +90,7 @@ import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
-public class MainActivity extends AppCompatActivity implements msgRecyclerViewAdapter.OnMsgAdapterInteractionListener,GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
+public class MainActivity extends AppCompatActivity implements FilterRecyclerViewAdapter.OnFilterFragmentAdapterInteractionListener,msgRecyclerViewAdapter.OnMsgAdapterInteractionListener,GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
 
     public static final String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -131,6 +131,7 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
     private LatLng dragInitPos;
     private boolean ipState = false;
     private long lastTimeBackPressed = 0;
+    private CameraPosition cameraPosition;
 
     private RelativeLayout main_content;
     private FloatingActionButton locationFab,autoZoomFab;
@@ -398,10 +399,6 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
 
         //Location location = dbManager.getProfile().getLocation();
         mapOptions = new GoogleMapOptions();
-        CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(new LatLng(43.3066633,-8.5128911))
-                .zoom(10)
-                .build();
         mapOptions.camera(cameraPosition);
 
         navigationView.setCheckedItem(R.id.drawer_map);
@@ -425,13 +422,14 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
         ab.show();
         ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
         ab.setDisplayHomeAsUpEnabled(true);
-        ab.setTitle("W'U");
+        ab.setTitle("WrU");
 
         if(!drawerFlag.equals(MAP_FRAGMENT_TAG)) {
             SupportMapFragment mMapFragment = SupportMapFragment.newInstance(mapOptions);
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
             fragmentTransaction.replace(R.id.map_fragment_content, mMapFragment, MAP_FRAGMENT_TAG);
-            fragmentTransaction.commit();
+            //fragmentTransaction.commit();
+            fragmentTransaction.commitAllowingStateLoss();
             fragmentManager.executePendingTransactions();
             mMapFragment.getMapAsync(MainActivity.this);
             drawerFlag = MAP_FRAGMENT_TAG;
@@ -442,6 +440,10 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
 
     private void setGroupsFragment(){
         navigationView.setCheckedItem(R.id.drawer_groups);
+
+        if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
+            cameraPosition = mGoogleMap.getCameraPosition();
+        }
 
         if (menu != null){
             menuItemShare.setEnabled(false);
@@ -479,6 +481,10 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
     }
 
     private void setEditGroupFragment(String groupId){
+        if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
+            cameraPosition = mGoogleMap.getCameraPosition();
+        }
+
         if (menu != null){
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
@@ -509,6 +515,10 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
     }
 
     private void setMessagesFragment(String groupId){
+        if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
+            cameraPosition = mGoogleMap.getCameraPosition();
+        }
+
         if (menu != null){
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
@@ -539,6 +549,10 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
     }
 
     private void setIpFragment(String userId, String ipId){
+        if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
+            cameraPosition = mGoogleMap.getCameraPosition();
+        }
+
         if (menu != null){
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
@@ -573,6 +587,10 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
 
     private void setSettingsFragment(){
         navigationView.setCheckedItem(R.id.drawer_settings);
+
+        if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
+            cameraPosition = mGoogleMap.getCameraPosition();
+        }
 
         if (menu != null){
             menuItemShare.setEnabled(false);
@@ -622,6 +640,7 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
     private void logout(){
         pb.show();
         Log.d(TAG,"logout");
+        disableMyLocation();
         dbManager.signOut();
         Auth.GoogleSignInApi.signOut(mGoogleAuthApiClient).setResultCallback(
                 new ResultCallback<Status>() {
@@ -796,9 +815,10 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
 
     private String groupIdMarker(String markerId){
         for (MapMarker m : DBManager.mapMarkers){
-            if (m.getId().equals(markerId)){
-                return m.getGroupId();
-            }
+            if(m.getId()!=null)
+                if (m.getId().equals(markerId)){
+                    return m.getGroupId();
+                }
         }
         return null;
     }
@@ -819,7 +839,6 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
             m.setVisible(ipState);
         }
     }
-
 
     /*************************** QUICK MESSAGE FRAGMENT METHODS ********************************/
 
@@ -851,6 +870,7 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
 
     @Override
     public void addGroup(){
+        removeSecondaryViews();
         checkPermissions(RC_CREATE_GROUP);
     }
 
@@ -937,14 +957,19 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
     /***************************** DBMANAGER METHODS ****************************************/
 
     @Override
-    public void signedIn() {
+    public void signedIn(Location lastLocation) {
         Log.d(TAG,"DBMANAGER: signed in:  "+dbManager.isAuthenticated());
         pref.edit().putBoolean("profileCreated",true);
         if(!mBound){
             Intent intent = new Intent(this, es.udc.tfg.pruebafinalfirebase.mService.class);
             bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
         }
+        cameraPosition = new CameraPosition(new LatLng(lastLocation.getLat(),lastLocation.getLng()),10,0,0);
+
         initView();
+
+
+
     }
 
     @Override
@@ -1277,6 +1302,8 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
                 mapMarker.getMarker().setPosition(new LatLng(p.getLat(),p.getLng()));
                 mapMarker.getMarker().setTitle(p.getName());
                 mapMarker.getMarker().setTag(p);
+                mapMarker.getMarker().hideInfoWindow();
+                mapMarker.getMarker().showInfoWindow();
             }
         }
     }
@@ -1330,7 +1357,6 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
         mGoogleMap = googleMap;
     }
 
-
     @Override
     public void onMapLoaded() {
         Log.d(TAG,"position: "+"map loaded");
@@ -1383,6 +1409,8 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
             bundle = null;
         }
     }
+
+
 
     @Override
     public void onMapLongClick(final LatLng point){
@@ -1619,11 +1647,11 @@ public class MainActivity extends AppCompatActivity implements msgRecyclerViewAd
 
             if(frag instanceof Groups_fragment)
                 setGroupsFragment();
-            else
+            else if(frag instanceof SupportMapFragment)
                 setMapFragment();
 
 
-            ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
+            //ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
             View view = this.getCurrentFocus();
             if (view != null) {
                 InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);

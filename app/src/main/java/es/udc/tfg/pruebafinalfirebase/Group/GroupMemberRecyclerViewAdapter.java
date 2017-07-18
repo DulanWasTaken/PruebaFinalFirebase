@@ -92,10 +92,11 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
             holder.admin.setVisibility(View.INVISIBLE);
         }
         if(!admins.contains(dbManager.getId())) {
-            if(member.getMemberId().equals(dbManager.getId()))
-                holder.admin.setVisibility(View.INVISIBLE);
             holder.deleteButton.setVisibility(View.INVISIBLE);
         }
+
+        if (!admins.contains(member.getMemberId()))
+            holder.admin.setVisibility(View.INVISIBLE);
 
         holder.deleteButton.setOnClickListener(new View.OnClickListener() {
             @Override

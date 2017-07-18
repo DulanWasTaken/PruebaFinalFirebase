@@ -83,6 +83,7 @@ public class DBManager {
     public Boolean authenticated = null;
     public Boolean listenersEnabled = false;
     private String lastMsgKey = "";
+    private long lastMsgTime = 0;
 
     public static DBManager getInstance() {
         Log.d(TAG,"GET SINGLETON INSTANCE");
@@ -118,7 +119,7 @@ public class DBManager {
                                 authenticated = true;
                                 mProfile = dataSnapshot.getValue(User.class);
                                 if(mListener!=null)
-                                    mListener.signedIn();
+                                    mListener.signedIn(mProfile.getLocation());
                                 if(!listenersEnabled)
                                 initListeners(mUser.getUid());
                             } else{
@@ -304,6 +305,17 @@ public class DBManager {
                                 if (msg!=null && mListener!=null){
                                     Log.d(TAG,"UN MSG RECIBIDO: "+msg.getMsg());
                                     lastMsgKey = dataSnapshot.getKey();
+
+                                    if(msg.getTime()>lastMsgTime){
+                                        lastMsgTime = msg.getTime();
+                                        Group auxgroup = findGroupById(groupId);
+                                        boolean auxbool = mGroups.get(auxgroup);
+                                        LinkedHashMap auxMap = (LinkedHashMap) mGroups.clone();
+                                        mGroups.clear();
+                                        mGroups.put(auxgroup,auxbool);
+                                        mGroups.putAll(auxMap);
+                                    }
+
                                     mListener.messageReceived(groupId,msg);
                                 }
                             }
@@ -568,15 +580,18 @@ public class DBManager {
     }
 
     private void updateGroupList(Group group){
-        ArrayList<Group> aux = new ArrayList<>(mGroups.keySet());
-        for(Group g : aux){
-            if (g.getId().equals(group.getId())){
-                mGroups.put(group,mGroups.get(g));
-                mGroups.remove(g);
-                return;
+        if(!mGroups.isEmpty()) {
+            ArrayList<Group> aux = new ArrayList<>(mGroups.keySet());
+            for (Group g : aux) {
+                if (g.getId().equals(group.getId())) {
+                    mGroups.put(group, mGroups.get(g));
+                    mGroups.remove(g);
+                    return;
+                }
             }
         }
-        mGroups.put(group,false);
+        mGroups.put(group, false);
+
         /*Boolean found = false;
         Iterator it = mGroups.entrySet().iterator();
         while (it.hasNext()) {
@@ -659,7 +674,7 @@ public class DBManager {
         }
         if(authenticated != null && mode==MODE_CREATE) {
             if (authenticated)
-                mListener.signedIn();
+                mListener.signedIn(mProfile.getLocation());
             else
                 mListener.signedOut();
         }
@@ -691,6 +706,7 @@ public class DBManager {
     }
 
     public void signOut(){
+        disableMyLocation();
         DBauth.signOut();
     }
 
@@ -711,7 +727,10 @@ public class DBManager {
     }
 
     public String getNick(){
-        return mProfile.getNick();
+        if(mProfile!=null)
+            return mProfile.getNick();
+        else
+            return "noNick";
     }
 
     /*********************************** PROFILE METHODS ******************************************/
@@ -738,7 +757,8 @@ public class DBManager {
     }
 
     public void setLocation(Location location){
-        DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_LOCATION_REFERENCE).setValue(location);
+        if(mUser!=null)
+            DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_LOCATION_REFERENCE).setValue(location);
     }
 
     public ArrayList<String> getGroupsId(){
@@ -746,7 +766,7 @@ public class DBManager {
     }
 
     public void disableMyLocation(){
-        if(mProfile!=null){
+        if(mProfile!=null && mUser!=null){
             Location aux = mProfile.getLocation();
             aux.setActive(false);
             DBroot.child(DB_USER_REFERENCE).child(mUser.getUid()).child(DB_USER_LOCATION_REFERENCE).setValue(aux);
@@ -1084,7 +1104,7 @@ public class DBManager {
     /*********************************** COMMUNICATION INTERFACE ******************************************/
 
     public interface DBManagerInteractions{
-        void signedIn();
+        void signedIn(Location lastLocation);
         void signedOut();
         void groupChanged(Group group);
         void noUserFound(String contact);

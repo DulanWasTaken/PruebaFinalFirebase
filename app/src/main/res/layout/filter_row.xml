@@ -14,4 +14,13 @@
         android:background="@drawable/checkbox_filter"
         android:id="@+id/filter_checkbox"/>
 
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="2dp"
+        android:src="@android:drawable/ic_input_add"
+        android:background="@drawable/filter_button_unchecked"
+        android:id="@+id/filter_checkbox_add"
+        android:visibility="gone"/>
+
 </LinearLayout>

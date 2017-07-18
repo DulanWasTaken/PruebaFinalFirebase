@@ -25,4 +25,9 @@
         <item>@string/preference_messages_50</item>
     </string-array>
 
+    <string-array name="infowindow_messages">
+        <item>@string/preference_infowindow_messages_3</item>
+        <item>@string/preference_infowindow_messages_4</item>
+        <item>@string/preference_infowindow_messages_5</item>
+    </string-array>
 </resources>

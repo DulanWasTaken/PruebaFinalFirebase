@@ -14,6 +14,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
     public final static String KEY_FILTER = "filter_preference";
     public final static String KEY_MESSAGES = "messages_preference";
     public final static String KEY_AUTOZOOM = "autozoom_preference";
+    public final static String KEY_INFOWINDOW_MESSAGES = "infowindow_preference_messages";
 
 
     private DBManager dbManager;

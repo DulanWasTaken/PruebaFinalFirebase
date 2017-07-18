@@ -20,6 +20,10 @@
     <string name ="preference_infowindow_15">15 s.</string>
     <string name ="preference_infowindow_indef">Indefinitely</string>
 
+    <string name ="preference_infowindow_messages_3">3</string>
+    <string name ="preference_infowindow_messages_4">4</string>
+    <string name ="preference_infowindow_messages_5">5</string>
+
     <string name = "preference_messages_10">10</string>
     <string name = "preference_messages_15">15</string>
     <string name = "preference_messages_20">20</string>

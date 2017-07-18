@@ -120,7 +120,7 @@ public class msgRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             });
         } else {
             final Message msg = mDataset.get(position-1);
-            final String stringDate = Utils.longToDate(msg.getTime());
+            final String stringDate = Utils.longToShortDate(msg.getTime());
             final String m = msg.getMsg();
 
             if(i == VIEW_LEFT){

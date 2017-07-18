@@ -8,8 +8,8 @@ android {
         minSdkVersion 17
 
         targetSdkVersion 25
-        versionCode 7
-        versionName "1.3"
+        versionCode 8
+        versionName "1.4"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
     }
@@ -27,7 +27,7 @@ dependencies {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
     //There are bugs with google preference support styles, using this bugfix library
-    //compile 'com.takisoft.fix:preference-v7:25.3.1.0'
+    compile 'com.takisoft.fix:preference-v7:25.3.1.0'
     compile 'com.google.firebase:firebase-database:10.2.0'
     compile 'com.google.firebase:firebase-auth:10.2.0'
     compile 'com.google.firebase:firebase-invites:10.2.0'
@@ -40,7 +40,7 @@ dependencies {
     compile 'com.android.support:recyclerview-v7:25.3.1'
     compile 'com.android.support:cardview-v7:25.3.1'
     compile 'com.android.support:support-v4:25.3.1'
-    compile 'com.android.support:preference-v7:25.3.1'
+    //compile 'com.android.support:preference-v7:25.3.1'
     /*compile ('es.situm:situm-sdk:2.6.0@aar') {
         transitive = true
     }*/

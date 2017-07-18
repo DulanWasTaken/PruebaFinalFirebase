@@ -63,6 +63,15 @@
             android:defaultValue="@string/preference_infowindow_5"/>
 
         <ListPreference
+            android:key="infowindow_preference_messages"
+            android:title="Messages info window shown"
+            android:summary="%s"
+            android:entries="@array/infowindow_messages"
+            android:entryValues="@array/infowindow_messages"
+            android:dialogTitle="Select how many messages will be shown"
+            android:defaultValue="@string/preference_infowindow_messages_4"/>
+
+        <ListPreference
             android:key="messages_preference"
             android:title="Messages loaded on chat"
             android:summary="%s"
