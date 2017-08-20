@@ -10,4 +10,6 @@
     <color name="validate_green">#6BE06B</color>
     <color name="cancel_red">#DB736B</color>
     <color name="text_white">#FFFFFF</color>
+    <color name="background_gray">#A6E7E7E7</color>
+    <color name="level_badge_green">#61aa56</color>
 </resources>

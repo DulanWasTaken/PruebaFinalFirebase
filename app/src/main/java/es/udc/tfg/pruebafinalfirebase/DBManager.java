@@ -7,8 +7,6 @@ import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
 
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
@@ -31,6 +29,7 @@ import java.util.LinkedHashMap;
 
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.Group.GroupMember;
+import es.udc.tfg.pruebafinalfirebase.Indoor.SitumAccount;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
@@ -52,6 +51,7 @@ public class DBManager {
     private static final String DB_MESSAGES_OLDER_REFERENCE = "oldermessages";
     private static final String DB_REQUESTS_REFERENCE = "requests";
     private static final String DB_PUBLICID_REFERENCE = "publicIds";
+    private static final String DB_SITUMACC_REFERENCE = "situmAccs";
     public static final int MODE_CREATE = 0;
     public static final int MODE_APPEND = 1;
     private static final String TAG = "DBManager";
@@ -1101,6 +1101,52 @@ public class DBManager {
         DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_DESTINATIONS_REFERENCE).child(pId).setValue(p);
     }
 
+    /******************************** SITUM ACCOUNTS *********************************/
+
+    public void addSitumAccount(String email, String pwd, String publicName){
+        String userId = mUser.getUid();
+        SitumAccount situmAccount = new SitumAccount(email,pwd,publicName,userId);
+        DBroot.child(DB_SITUMACC_REFERENCE).child(Utils.encodeForFirebaseKey(email)).setValue(situmAccount);
+    }
+
+    public void initSitumAccountList(){
+        final ArrayList<SitumAccount> result = new ArrayList<>();
+        Query query = DBroot.child(DB_SITUMACC_REFERENCE).limitToLast(100);
+        query.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                for(DataSnapshot children : dataSnapshot.getChildren()){
+                    SitumAccount acc = children.getValue(SitumAccount.class);
+                    if(acc!=null)
+                        result.add(acc);
+                }
+                if(mListener!=null){
+                    mListener.initSitumAccountList(result);
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    public void findSitumPwd(String email){
+        DBroot.child(DB_SITUMACC_REFERENCE).child(Utils.encodeForFirebaseKey(email)).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if(dataSnapshot.exists())
+                    mListener.enableIndoor(dataSnapshot.getValue(SitumAccount.class));
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
+
     /*********************************** COMMUNICATION INTERFACE ******************************************/
 
     public interface DBManagerInteractions{
@@ -1121,5 +1167,7 @@ public class DBManager {
         void destinationPointAdded(Point p, String groupId);
         void destinationPointChanged(Point p, String groupId);
         void destinationPointRemoved(Point p, String groupId);
+        void initSitumAccountList(ArrayList<SitumAccount> situmAccounts);
+        void enableIndoor(SitumAccount account);
     }
 }

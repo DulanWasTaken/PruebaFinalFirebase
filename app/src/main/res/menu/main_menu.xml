@@ -14,6 +14,11 @@
         app:showAsAction="always"
         android:enabled="true"/>
     <item
+        android:id="@+id/action_indoor_switch"
+        android:title="indoor"
+        app:showAsAction="always"
+        android:enabled="true"/>
+    <item
         android:id="@+id/action_filter"
         android:icon="@drawable/ic_action_filtericon"
         android:title="Filter"

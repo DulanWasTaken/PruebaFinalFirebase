@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "511370123728-tpq320bao61m1vvfr32psut3ohkmnrpv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "es.udc.tfg.pruebafinalfirebase",
+            "certificate_hash": "36d770d8330ab1cfe1a26247d612d6372f745b6d"
+          }
+        },
+        {
           "client_id": "511370123728-3lrsitg9vo4jh64ra554rfsadg7de36c.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

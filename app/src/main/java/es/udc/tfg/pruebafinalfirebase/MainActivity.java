@@ -12,6 +12,8 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.CountDownTimer;
 import android.os.IBinder;
@@ -33,6 +35,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.preference.PreferenceManager;
 import android.support.v7.widget.Toolbar;
+import android.text.method.PasswordTransformationMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -41,9 +44,11 @@ import android.view.View;
 import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.text.InputType;
@@ -65,21 +70,36 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Map;
 
+import es.situm.sdk.SitumSdk;
+import es.situm.sdk.communication.CommunicationManager;
+import es.situm.sdk.error.Error;
+import es.situm.sdk.model.cartography.Building;
+import es.situm.sdk.model.cartography.Floor;
+import es.situm.sdk.model.location.Bounds;
+import es.situm.sdk.model.location.Coordinate;
+import es.situm.sdk.utils.Handler;
 import es.udc.tfg.pruebafinalfirebase.Group.EditGroupFragment;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.Group.GroupsRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Group.Groups_fragment;
+import es.udc.tfg.pruebafinalfirebase.Indoor.IndoorFragment;
+import es.udc.tfg.pruebafinalfirebase.Indoor.IndoorRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.Indoor.SitumAccount;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPointFragment;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
+import es.udc.tfg.pruebafinalfirebase.LevelPicker.LevelPickerFragment;
+import es.udc.tfg.pruebafinalfirebase.LevelPicker.levelPickerRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Messages.MessagesFragment;
 import es.udc.tfg.pruebafinalfirebase.Filter.FilterRecyclerViewAdapter;
@@ -90,7 +110,10 @@ import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
-public class MainActivity extends AppCompatActivity implements FilterRecyclerViewAdapter.OnFilterFragmentAdapterInteractionListener,msgRecyclerViewAdapter.OnMsgAdapterInteractionListener,GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
+import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.firebase.perf.metrics.AddTrace;
+
+public class MainActivity extends AppCompatActivity implements levelPickerRecyclerViewAdapter.onLevelPickerAdapterInteractionListener,IndoorRecyclerViewAdapter.OnIndoorAdapterInteractionListener,IndoorFragment.OnIndoorFragmentInteractionListener,FilterRecyclerViewAdapter.OnFilterFragmentAdapterInteractionListener,msgRecyclerViewAdapter.OnMsgAdapterInteractionListener,GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
 
     public static final String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -99,10 +122,13 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
     public static final String FILTER_FRAGMENT_TAG = "FILTER_FRAGMENT_TAG";
     public static final String EDIT_GROUP_FRAGMENT_TAG = "EDIT_GROUP_FRAGMENT_TAG";
     public static final String MESSAGES_FRAGMENT_TAG = "MESSAGES_FRAGMENT_TAG";
+    public static final String INDOOR_FRAGMENT_TAG = "INDOOR_FRAGMENT_TAG";
+    public static final String LEVEL_FRAGMENT_TAG = "LEVEL_FRAGMENT_TAG";
     public static final String SETTINGS_FRAGMENT_TAG = "SETTINGS_FRAGMENT_TAG";
     public static final String QUICKMSG_FRAGMENT_TAG = "QUICKMSG_FRAGMENT_TAG";
     public static final String LOGIN_FRAGMENT_TAG = "LOGIN_FRAGMENT_TAG";
     public static final String IP_FRAGMENT_TAG = "IP_FRAGMENT_TAG";
+    public static final String NO_ACC = "NO_ACC";
     public static final int RC_SIGN_IN = 777;
     public static final int RC_PHONE_CONTACTS = 888;
     public static final int RC_EMAIL_CONTACTS = 999;
@@ -110,6 +136,7 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
     public static final int RC_CHECK_SETTINGS = 666;
     public static final int RC_CREATE_GROUP = 1;
     public static final int RC_ADD_MEMBER = 2;
+    public static final int NO_LEVEL = 9999;
     public static final int PERMISSION_REQUEST_READ_CONTACTS = 333;
     public static final int PERMISSION_REQUEST_LOCATION = 222;
     public static final String MARKER_TAG_CHAT_TEXT = "chat/text";
@@ -137,8 +164,9 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
     private FloatingActionButton locationFab,autoZoomFab;
     private DrawerLayout mDrawerLayout;
     private NavigationView navigationView;
-    private MenuItem menuItemShare,menuItemNotif,menuItemFilter,menuItemQuickmsg,menuItemQuickmap;
+    private MenuItem menuItemShare,menuItemNotif,menuItemFilter,menuItemQuickmsg,menuItemQuickmap,menuItemIndoor;
     private Button notifications;
+    private Switch indoor_switch;
     private Menu menu;
     private Dialog pb;
     private AlertDialog noProfileDialog;
@@ -151,6 +179,10 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
     private es.udc.tfg.pruebafinalfirebase.mService mService;
     private ServiceConnection mConnection;
     private boolean mBound;
+    private CommunicationManager situmCommunicationManager;
+    private String currentBuildingId = "";
+    private Building currentBuilding = null;
+    private Collection<Floor> currentFloors = null;
 
     private GoogleApiClient mGoogleAuthApiClient;
     private GoogleMapOptions mapOptions;
@@ -159,10 +191,13 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
     private String drawerFlag = "";
 
     private DBManager dbManager = DBManager.getInstance();
+    private FirebaseAnalytics mFirebaseAnalytics;
 
     @Override
+    @AddTrace(name = "onCreateTrace", enabled = true/*Optional*/)
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
         /************************ PANTALLA DE CARGA ************************************/
         pb = new Dialog(this, android.R.style.Theme_Black);
         View view = LayoutInflater.from(this).inflate(R.layout.progress_bar, null);
@@ -210,7 +245,7 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
                 mService = binder.getService();
                 mBound = true;
                 mService.registerClient(MainActivity.this);
-
+                situmCommunicationManager = SitumSdk.communicationManager();
                 locationFab.setEnabled(true);
             }
 
@@ -240,6 +275,12 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
         navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(MenuItem menuItem) {
+
+                Bundle bundle = new Bundle();
+                bundle.putString(FirebaseAnalytics.Param.ITEM_ID, "drawerButton");
+                bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, "ActionBarButton");
+                mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
+
                 menuItem.setChecked(true);
                 mDrawerLayout.closeDrawers();
                 removeSecondaryViews();
@@ -251,6 +292,10 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
                     case R.id.drawer_groups:
                         setGroupsFragment();
                         drawerFlag = GROUPS_FRAGMENT_TAG;
+                        break;
+                    case R.id.drawer_indoor:
+                        setIndoorFragment(pref.getString("situmAccount",NO_ACC));
+                        drawerFlag = INDOOR_FRAGMENT_TAG;
                         break;
                     case R.id.drawer_settings:
                         setSettingsFragment();
@@ -413,10 +458,11 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
             menuItemQuickmsg.setVisible(true);
             menuItemQuickmap.setEnabled(false);
             menuItemQuickmap.setVisible(false);
+            menuItemIndoor.setVisible(false);
         }
         locationFab.setVisibility(View.VISIBLE);
         autoZoomFab.setVisibility(View.VISIBLE);
-        if(DBManager.pendingRequests.size()!=0)
+        if(DBManager.pendingRequests.size()!=0 && menuItemNotif!=null)
             menuItemNotif.setVisible(true);
 
         ab.show();
@@ -455,6 +501,7 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
             menuItemQuickmsg.setVisible(false);
             menuItemQuickmap.setEnabled(false);
             menuItemQuickmap.setVisible(false);
+            menuItemIndoor.setVisible(false);
         }
         locationFab.setVisibility(View.GONE);
         autoZoomFab.setVisibility(View.GONE);
@@ -495,6 +542,7 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
             menuItemQuickmsg.setVisible(false);
             menuItemQuickmap.setEnabled(false);
             menuItemQuickmap.setVisible(false);
+            menuItemIndoor.setVisible(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
@@ -529,6 +577,7 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
             menuItemQuickmsg.setVisible(false);
             menuItemQuickmap.setEnabled(true);
             menuItemQuickmap.setVisible(true);
+            menuItemIndoor.setVisible(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
@@ -563,6 +612,7 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
             menuItemQuickmsg.setVisible(false);
             menuItemQuickmap.setEnabled(true);
             menuItemQuickmap.setVisible(true);
+            menuItemIndoor.setVisible(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
@@ -602,6 +652,7 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
             menuItemQuickmsg.setVisible(false);
             menuItemQuickmap.setEnabled(false);
             menuItemQuickmap.setVisible(false);
+            menuItemIndoor.setVisible(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
@@ -618,6 +669,44 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
         fragmentManager.executePendingTransactions();
 
         drawerFlag = SETTINGS_FRAGMENT_TAG;
+
+        pb.cancel();
+    }
+
+    private void setIndoorFragment(String acc){
+        navigationView.setCheckedItem(R.id.drawer_indoor);
+
+        if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
+            cameraPosition = mGoogleMap.getCameraPosition();
+        }
+
+        if (menu != null){
+            menuItemShare.setEnabled(false);
+            menuItemNotif.setEnabled(false);
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
+            menuItemFilter.setVisible(false);
+            menuItemQuickmsg.setEnabled(false);
+            menuItemQuickmsg.setVisible(false);
+            menuItemQuickmap.setEnabled(false);
+            menuItemQuickmap.setVisible(false);
+            menuItemIndoor.setVisible(true);
+        }
+        locationFab.setVisibility(View.GONE);
+        autoZoomFab.setVisibility(View.GONE);
+
+        ab.setHomeAsUpIndicator(R.drawable.ic_drawer);
+        ab.setDisplayHomeAsUpEnabled(true);
+        ab.setTitle("Indoor");
+
+        if(!drawerFlag.equals(INDOOR_FRAGMENT_TAG)) {
+            IndoorFragment indoorFragment = IndoorFragment.newInstance(acc);
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            fragmentTransaction.replace(R.id.map_fragment_content, indoorFragment, INDOOR_FRAGMENT_TAG);
+            fragmentTransaction.commit();
+            fragmentManager.executePendingTransactions();
+            drawerFlag = INDOOR_FRAGMENT_TAG;
+        }
 
         pb.cancel();
     }
@@ -712,6 +801,14 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
             myLocationEnabled = mService.disableLocation();
     }
 
+    private int findLevelFromFloor(String floorId){
+        for(Floor floor : currentFloors){
+            if(floor.getIdentifier().equals(floorId))
+                return floor.getLevel();
+        }
+        return NO_LEVEL;
+    }
+
     private void locationChanged(Location location, String userId,String nick, String groupId){
         Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+"   ACTIVE?"+location.isActive());
 
@@ -720,12 +817,21 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
         final MarkerOptions options;
 
 
-        if(userId!=dbManager.getId())
-            options = new MarkerOptions()
-                .position(new LatLng(location.getLat(), location.getLng()))
-                .title(nick)
-                .icon(BitmapDescriptorFactory.defaultMarker(Utils.stringToHueColor(groupId)));
-        else
+        if(!userId.equals(dbManager.getId())) {
+            if(location.getBuildingId()!=null && location.getFloorId()!=null && location.isIndoor())
+                options = new MarkerOptions()
+                        .position(new LatLng(location.getLat(), location.getLng()))
+                        .title(nick)
+                        .anchor((float)0.5,(float)1)
+                        .icon(BitmapDescriptorFactory.fromBitmap(Utils.overlay(BitmapFactory.decodeResource(getResources(),R.drawable.ic_map_marker),BitmapFactory.decodeResource(getResources(),R.drawable.level_badge_background),userId,location.getBuildingId().equals(currentBuildingId)?findLevelFromFloor(location.getFloorId()):NO_LEVEL,getResources().getDisplayMetrics().density)));
+            else
+                options = new MarkerOptions()
+                        .position(new LatLng(location.getLat(), location.getLng()))
+                        .title(nick)
+                        .anchor((float)0.5,(float)1)
+                        .icon(BitmapDescriptorFactory.fromBitmap(Utils.overlay(BitmapFactory.decodeResource(getResources(),R.drawable.ic_map_marker),BitmapFactory.decodeResource(getResources(),R.drawable.level_badge_background),userId,NO_LEVEL,getResources().getDisplayMetrics().density)));
+
+        }else {
             options = new MarkerOptions()
                     .position(new LatLng(location.getLat(), location.getLng()))
                     .rotation(location.getBearing())
@@ -733,6 +839,16 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
                     .anchor((float)0.5,(float)0.5)
                     .flat(true)
                     .icon(BitmapDescriptorFactory.fromResource(location.getBearing()==(float)0.0?R.drawable.ic_mylocation_nobearing:R.drawable.ic_mylocation));
+
+           /* options = new MarkerOptions()
+                    .position(new LatLng(location.getLat(), location.getLng()))
+                    .rotation(location.getBearing())
+                    .title("Me")
+                    .anchor((float)0.5,(float)0.5)
+                    .flat(true)
+                    .icon(BitmapDescriptorFactory.fromBitmap(Utils.overlay(BitmapFactory.decodeResource(getResources(),R.drawable.ic_map_marker),BitmapFactory.decodeResource(getResources(),R.drawable.level_badge_background),"alsdkfñebueh",-3,getResources().getDisplayMetrics().density)));
+*/
+        }
 
 
         if(index==-1){
@@ -905,7 +1021,50 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
     /****************************** SERVICE METHODS *****************************************/
 
     @Override
-    public void onMyLocationChanged(Location location){
+    public void onMyLocationChanged(final Location location){
+        if(location.isIndoor()){
+            if(!currentBuildingId.equals(location.getBuildingId())){
+                currentBuildingId = location.getBuildingId();
+                //pb.show();
+
+                FragmentTransaction transaction = fragmentManager.beginTransaction();
+                final LevelPickerFragment levelPickerFragment = new LevelPickerFragment();
+                transaction.add(R.id.level_fragment_content,levelPickerFragment,LEVEL_FRAGMENT_TAG);
+                transaction.commit();
+                fragmentManager.executePendingTransactions();
+
+                situmCommunicationManager.fetchBuildings(new Handler<Collection<Building>>() {
+                    @Override
+                    public void onSuccess(Collection<Building> buildings) {
+                        for(Building building:buildings){
+                            if(building.getIdentifier().equals(currentBuilding)){
+                                currentBuilding = building;
+                                situmCommunicationManager.fetchFloorsFromBuilding(building, new Handler<Collection<Floor>>() {
+                                    @Override
+                                    public void onSuccess(Collection<Floor> floors) {
+                                        currentFloors = floors;
+                                        ArrayList<Floor> floorParam = new ArrayList<Floor>(floors);
+                                        LevelPickerFragment levelPickerFragment1 = (LevelPickerFragment)fragmentManager.findFragmentByTag(LEVEL_FRAGMENT_TAG);
+                                        if(levelPickerFragment!=null)
+                                            levelPickerFragment.initFloorList(floorParam,location.getFloorId());
+                                    }
+
+                                    @Override
+                                    public void onFailure(Error error) {
+
+                                    }
+                                });
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Error error) {
+
+                    }
+                });
+            }
+        }
         locationChanged(location,dbManager.getId(),"","");
     }
 
@@ -920,6 +1079,16 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
         } catch (IntentSender.SendIntentException e) {
             // Ignore the error.
         }
+    }
+
+    @Override
+    public void indoorEnabled(SitumAccount acc) {
+        Snackbar.make(MainActivity.this.getCurrentFocus(),"Connected to Situm account: "+acc.getPublicName(),Snackbar.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void indoorFailed(Error error) {
+        Snackbar.make(MainActivity.this.getCurrentFocus(),"Situm account refused",Snackbar.LENGTH_SHORT).show();
     }
 
     /****************************** INTEREST POINT FRAGMENT METHODS *****************************************/
@@ -952,6 +1121,100 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
     @Override
     public void onInterestPointClicked(Message msg) {
         setIpFragment(msg.getUserIp(),msg.getIpId());
+    }
+
+    /******************************* INDOOR FRAGMENT LISTENER ************************************/
+
+    @Override
+    public void onSitumButtonClicked() {
+        final LinearLayout ll = new LinearLayout(MainActivity.this);
+        ll.setOrientation(LinearLayout.VERTICAL);
+        final EditText et = new EditText(MainActivity.this);
+        final EditText et2 = new EditText(MainActivity.this);
+        final EditText et3 = new EditText(MainActivity.this);
+        et.setHint("Situm account email");
+        et2.setHint("Situm password");
+        et3.setHint("Public name");
+        et2.setInputType(InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        et2.setTransformationMethod(PasswordTransformationMethod.getInstance());
+        ll.addView(et);
+        ll.addView(et2);
+        ll.addView(et3);
+
+        new AlertDialog.Builder(MainActivity.this)
+                .setTitle("Situm account")
+                .setMessage("You are making this account a public Situm account. We recommend not to do it with your personal account.")
+                .setView(ll)
+                .setCancelable(false)
+                .setPositiveButton("Next", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        final String email = et.getText().toString();
+                        final String pwd = et2.getText().toString();
+                        final String publicName = et3.getText().toString();
+                        if (!email.equals("")&&!pwd.equals("")){
+                            SitumSdk.init(MainActivity.this);
+                            SitumSdk.configuration().setUserPass(email, pwd);
+                            SitumSdk.communicationManager().validateUserCredentials(new Handler<Object>() {
+                                @Override
+                                public void onSuccess(Object o) {
+                                    Snackbar.make(MainActivity.this.getCurrentFocus(),"Situm account accepted",Snackbar.LENGTH_SHORT).show();
+                                    dbManager.addSitumAccount(email,pwd,publicName);
+                                }
+
+                                @Override
+                                public void onFailure(Error error) {
+                                    Snackbar.make(MainActivity.this.getCurrentFocus(),"Incorrect user or password",Snackbar.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                })
+                .show();
+    }
+
+    @Override
+    public void accountSelected(SitumAccount account) {
+        SharedPreferences.Editor editor = pref.edit();
+        editor.putString("situmAccount",account.getEmail());
+        editor.commit();
+
+        if(pref.getBoolean("locationEnabled",false))
+            locationFab.performClick();
+
+        if(pref.getBoolean("IndoorLocation",false))
+            mService.setIndoorState(true);
+    }
+
+    @Override
+    public void levelPicked(Floor floor) {
+        situmCommunicationManager.fetchMapFromFloor(floor, new Handler<Bitmap>() {
+            @Override
+            public void onSuccess(Bitmap bitmap) {
+                Bounds drawBounds = currentBuilding.getBounds();
+                Coordinate coordinateNE = drawBounds.getNorthEast();
+                Coordinate coordinateSW = drawBounds.getSouthWest();
+                LatLngBounds latLngBounds = new LatLngBounds(
+                        new LatLng(coordinateSW.getLatitude(), coordinateSW.getLongitude()),
+                        new LatLng(coordinateNE.getLatitude(), coordinateNE.getLongitude()));
+
+                mGoogleMap.addGroundOverlay(new GroundOverlayOptions()
+                        .image(BitmapDescriptorFactory.fromBitmap(bitmap))
+                        .bearing((float) currentBuilding.getRotation().degrees())
+                        .positionFromBounds(latLngBounds));
+            }
+
+            @Override
+            public void onFailure(Error error) {
+
+            }
+        });
     }
 
     /***************************** DBMANAGER METHODS ****************************************/
@@ -1346,6 +1609,19 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
         }
     }
 
+    @Override
+    public void initSitumAccountList(ArrayList<SitumAccount> situmAccounts) {
+        IndoorFragment indoorFragment = (IndoorFragment) fragmentManager.findFragmentByTag(INDOOR_FRAGMENT_TAG);
+        if(indoorFragment!=null){
+            indoorFragment.setList(situmAccounts);
+        }
+    }
+
+    @Override
+    public void enableIndoor(SitumAccount account) {
+        mService.enableIndoor(account);
+    }
+
     /****************************** GOOGLE MAPS METHODS **************************************/
 
     @Override
@@ -1353,6 +1629,8 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
         googleMap.setOnMapLoadedCallback(this);
         googleMap.setInfoWindowAdapter(new mInfoWindowAdapter(getLayoutInflater(),getApplicationContext()));
         googleMap.getUiSettings().setMapToolbarEnabled(false);
+        googleMap.getUiSettings().setIndoorLevelPickerEnabled(true);
+        googleMap.setIndoorEnabled(false);
         googleMap.setOnInfoWindowClickListener(this);
         mGoogleMap = googleMap;
     }
@@ -1774,6 +2052,7 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
         getMenuInflater().inflate(R.menu.main_menu,menu);
         menuItemShare = menu.findItem(R.id.action_share);
         menuItemNotif = menu.findItem(R.id.action_notifications);
+        menuItemIndoor = menu.findItem(R.id.action_indoor_switch);
         menuItemFilter = menu.findItem(R.id.action_filter);
         menuItemQuickmsg = menu.findItem(R.id.action_quickmsg);
         menuItemQuickmap = menu.findItem(R.id.action_quickMap);
@@ -1790,11 +2069,15 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
             menuItemShare.setEnabled(false);
             menuItemNotif.setEnabled(false);
         }*/
+
         MenuItemCompat.setActionView(menu.findItem(R.id.action_notifications), R.layout.notification_badge);
         View count = menu.findItem(R.id.action_notifications).getActionView();
         notifications = (Button) count.findViewById(R.id.notif);
+        int i = dbManager.getPendingRequests().size();
+        if(i!=0)
+            menuItemNotif.setVisible(true);
         if(notifications!=null)
-            notifications.setText(dbManager.getPendingRequests().size()+"");
+            notifications.setText(i+"");
         notifications.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1816,6 +2099,26 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
                 }
             }
         });
+
+        MenuItemCompat.setActionView(menu.findItem(R.id.action_indoor_switch), R.layout.switch_actionbar);
+        View aux = menu.findItem(R.id.action_indoor_switch).getActionView();
+        indoor_switch = (Switch) aux.findViewById(R.id.switch_actionbar);
+        indoor_switch.setChecked(pref.getBoolean("IndoorLocation",false));
+        menuItemIndoor.setVisible(false);
+        indoor_switch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if(pref.getString("situmAccount",NO_ACC).equals(NO_ACC) && isChecked){
+                    buttonView.setChecked(false);
+                    Snackbar.make(MainActivity.this.getCurrentFocus(),"Select a Situm account before enable indoor location",Snackbar.LENGTH_LONG).show();
+                } else {
+                    if(pref.getBoolean("locationEnabled",false))
+                        locationFab.performClick();
+                    mService.setIndoorState(isChecked);
+                }
+            }
+        });
+
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -1840,7 +2143,6 @@ public class MainActivity extends AppCompatActivity implements FilterRecyclerVie
                     mDrawerLayout.openDrawer(GravityCompat.START);
                 return true;
             case R.id.action_filter:
-                //fragmentManager.executePendingTransactions();
                 FragmentTransaction transaction = fragmentManager.beginTransaction();
                 Filter_fragment existFragment = (Filter_fragment) fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
                 QuickMsgFragment quickMsgFragment = (QuickMsgFragment) fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);

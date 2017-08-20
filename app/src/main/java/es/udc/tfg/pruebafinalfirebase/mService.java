@@ -12,15 +12,16 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Binder;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -34,22 +35,28 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStates;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
-//import es.situm.sdk.SitumSdk;
+import es.situm.sdk.SitumSdk;
+import es.situm.sdk.communication.CommunicationManager;
+import es.situm.sdk.error.Error;
+import es.situm.sdk.location.LocationManager;
+import es.situm.sdk.location.LocationStatus;
+import es.situm.sdk.model.cartography.Building;
+import es.situm.sdk.model.cartography.Floor;
+import es.situm.sdk.utils.Handler;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
+import es.udc.tfg.pruebafinalfirebase.Indoor.SitumAccount;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
-import es.udc.tfg.pruebafinalfirebase.Messages.MessagesFragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
 
 public class mService extends Service implements DBManager.DBManagerInteractions,LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
@@ -73,6 +80,9 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     private NotificationManager mNotifyMgr;
     private SharedPreferences appPreferences;
     private GoogleApiClient mGoogleLocateApiClient;
+    private CommunicationManager situmComunicationManager;
+    private LocationManager situmLocationManager;
+    private es.situm.sdk.location.LocationListener indoorLocationListener;
     private DBManager dbManager = DBManager.getInstance();
     private ArrayList<Message> pendingMsg = new ArrayList<>();
 
@@ -112,13 +122,41 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         super.onCreate();
         Log.d(TAG, "onCreate");
 
-        /*SitumSdk.init(this);
-        SitumSdk.configuration().setApiKey("udc@situm.es", "dWitVupDW/5HnkOWG36Z8+q0eTtmu9bO");*/
+        SitumSdk.init(this);
+        situmComunicationManager = SitumSdk.communicationManager();
+        situmLocationManager = SitumSdk.locationManager();
+        indoorLocationListener = new es.situm.sdk.location.LocationListener() {
+            @Override
+            public void onLocationChanged(@NonNull es.situm.sdk.model.location.Location location) {
+                es.udc.tfg.pruebafinalfirebase.Location mLocation;
+                Toast.makeText(mService.this,"Indoor?"+location.isIndoor()+" bearing:"+location.getBearing().toString(),Toast.LENGTH_SHORT).show();
+                if(location.isIndoor())
+                    mLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getCoordinate().getLatitude(),location.getCoordinate().getLongitude(),location.getAccuracy(),(float)location.getBearing().degrees(),true,true,location.getBuildingIdentifier(),location.getFloorIdentifier());
+                else
+                    mLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getCoordinate().getLatitude(),location.getCoordinate().getLongitude(),location.getAccuracy(),(float)location.getBearing().degrees(),true,false);
+
+                if(bound)
+                    mListener.onMyLocationChanged(mLocation);
+                else
+                    locationReceived(dbManager.getId(),dbManager.getNick(),"",mLocation);
+            }
+
+            @Override
+            public void onStatusChanged(@NonNull LocationStatus locationStatus) {
+
+            }
+
+            @Override
+            public void onError(@NonNull Error error) {
+
+            }
+        };
 
         appPreferences = PreferenceManager.getDefaultSharedPreferences(mService.this);
         pref = getSharedPreferences(TAG, Context.MODE_PRIVATE);
         pref.edit().putBoolean("serviceRunning",true).commit();
         lastTimeForeground = pref.getLong("lastTimeForeground",0);
+        setIndoorState(pref.getBoolean("IndoorLocation",false));
 
         mNotifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
@@ -148,6 +186,8 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         running = false;
         pref.edit().putBoolean("serviceRunning",false).commit();
         mGoogleLocateApiClient.disconnect();
+        if(situmLocationManager.isRunning())
+            situmLocationManager.removeUpdates(indoorLocationListener);
         super.onDestroy();
     }
 
@@ -207,66 +247,116 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         } else {
             return false;
         }
-        final LocationRequest mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(10000);
-        mLocationRequest.setFastestInterval(5000);
-        mLocationRequest.setPriority(i);
 
-        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(mLocationRequest);
-        PendingResult<LocationSettingsResult> result = LocationServices.SettingsApi.checkLocationSettings(mGoogleLocateApiClient, builder.build());
-        result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
-            @Override
-            public void onResult(LocationSettingsResult result) {
-                final Status status = result.getStatus();
-                final LocationSettingsStates settingsStates = result.getLocationSettingsStates();
-                switch (status.getStatusCode()) {
-                    case LocationSettingsStatusCodes.SUCCESS:
-                        // All location settings are satisfied. The client can
-                        // initialize location requests here.
-                        if (ActivityCompat.checkSelfPermission(mService.this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mService.this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                            return;
-                        }
+        if(pref.getBoolean("IndoorLocation",false)){
+            es.situm.sdk.location.LocationRequest locationRequest = new es.situm.sdk.location.LocationRequest.Builder()
+                    .useWifi(true)
+                    .useBle(true)
+                    .useForegroundService(true)
+                    .build();
+            if (ActivityCompat.checkSelfPermission(mService.this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mService.this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                situmLocationManager.requestLocationUpdates(locationRequest, indoorLocationListener);
 
-                        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleLocateApiClient, mLocationRequest, mService.this);
-                        SharedPreferences.Editor editor = pref.edit();
-                        editor.putBoolean("locationEnabled",true);
-                        editor.commit();
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putBoolean("locationEnabled", true);
+                editor.commit();
+            }else
+                Log.d(TAG,"SITUM INDOOR NO PERMISSION");
 
-                        break;
-                    case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-                        // Location settings are not satisfied, but this can be fixed
-                        // by showing the user a dialog.
-                        // Show the dialog by calling startResolutionForResult(),
-                        // and check the result in onActivityResult().
-                        if (bound)
-                            mListener.startResolution(status);
-                        break;
-                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                        // Location settings are not satisfied. However, we have no way
-                        // to fix the settings so we won't show the dialog.
+        } else {
+            final LocationRequest mLocationRequest = new LocationRequest();
+            mLocationRequest.setInterval(10000);
+            mLocationRequest.setFastestInterval(5000);
+            mLocationRequest.setPriority(i);
 
-                        break;
+            LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(mLocationRequest);
+            PendingResult<LocationSettingsResult> result = LocationServices.SettingsApi.checkLocationSettings(mGoogleLocateApiClient, builder.build());
+            result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
+                @Override
+                public void onResult(LocationSettingsResult result) {
+                    final Status status = result.getStatus();
+                    final LocationSettingsStates settingsStates = result.getLocationSettingsStates();
+                    switch (status.getStatusCode()) {
+                        case LocationSettingsStatusCodes.SUCCESS:
+                            // All location settings are satisfied. The client can
+                            // initialize location requests here.
+                            if (ActivityCompat.checkSelfPermission(mService.this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mService.this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                                return;
+                            }
+
+                            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleLocateApiClient, mLocationRequest, mService.this);
+                            SharedPreferences.Editor editor = pref.edit();
+                            editor.putBoolean("locationEnabled",true);
+                            editor.commit();
+
+                            break;
+                        case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                            // Location settings are not satisfied, but this can be fixed
+                            // by showing the user a dialog.
+                            // Show the dialog by calling startResolutionForResult(),
+                            // and check the result in onActivityResult().
+                            if (bound)
+                                mListener.startResolution(status);
+                            break;
+                        case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                            // Location settings are not satisfied. However, we have no way
+                            // to fix the settings so we won't show the dialog.
+
+                            break;
+                    }
                 }
-            }
-        });
+            });
+        }
 
         return true;
     }
 
     public boolean disableLocation(){
-        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleLocateApiClient, this);
+        if(pref.getBoolean("IndoorLocation",false)){
+            situmLocationManager.removeUpdates(indoorLocationListener);
+        } else {
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleLocateApiClient, this);
+        }
         SharedPreferences.Editor editor = pref.edit();
         editor.putBoolean("locationEnabled",false);
         editor.commit();
         dbManager.disableMyLocation();
         if(mListener!=null)
-            mListener.onMyLocationChanged(new es.udc.tfg.pruebafinalfirebase.Location(0,0,0,0,false));
+            mListener.onMyLocationChanged(new es.udc.tfg.pruebafinalfirebase.Location(0,0,0,0,false,false));
         return false;
+    }
+
+    public void setIndoorState(Boolean isChecked){
+        String acc = pref.getString("situmAccount",MainActivity.NO_ACC);
+        if(isChecked && acc!=MainActivity.NO_ACC)
+            dbManager.findSitumPwd(acc);
+        SharedPreferences.Editor edit = pref.edit();
+        edit.putBoolean("IndoorLocation",isChecked);
+        edit.commit();
+    }
+
+    @Override
+    public void enableIndoor(final SitumAccount account){
+        SitumSdk.configuration().setUserPass(account.getEmail(), account.getPwd());
+        situmComunicationManager.validateUserCredentials(new Handler<Object>() {
+            @Override
+            public void onSuccess(Object o) {
+                if(bound)
+                    mListener.indoorEnabled(account);
+            }
+
+            @Override
+            public void onFailure(Error error) {
+                mListener.indoorFailed(error);
+            }
+        });
     }
 
     public interface OnServiceInteractionListener{
         public void onMyLocationChanged(es.udc.tfg.pruebafinalfirebase.Location location);
         public void startResolution(Status status);
+        void indoorEnabled(SitumAccount acc);
+        void indoorFailed(Error error);
     }
 
     /*************************** GOOGLE LOCATION METHODS *********************************/
@@ -294,7 +384,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     @Override
     public void onLocationChanged(Location location) {
         Log.d(TAG,"gps changing position...  bearing = "+location.getBearing());
-        es.udc.tfg.pruebafinalfirebase.Location myLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getLatitude(),location.getLongitude(),location.getAccuracy(),location.getBearing(),true);
+        es.udc.tfg.pruebafinalfirebase.Location myLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getLatitude(),location.getLongitude(),location.getAccuracy(),location.getBearing(),true,false);
         dbManager.setLocation(myLocation);
         if(bound)
             mListener.onMyLocationChanged(myLocation);
@@ -476,6 +566,11 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
     @Override
     public void destinationPointRemoved(Point p, String groupId) {
+
+    }
+
+    @Override
+    public void initSitumAccountList(ArrayList<SitumAccount> situmAccounts) {
 
     }
 }

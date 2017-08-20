@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:padding="4dp"
+    android:id="@+id/situm_acc_row"
+    android:background="?android:attr/selectableItemBackground">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/situm_name"
+            android:layout_toEndOf="@+id/photo_img"
+            android:textSize="20dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="2dp"
+            android:layout_marginLeft="15dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/situm_acc"
+            android:layout_below="@+id/situm_name"
+            android:layout_alignLeft="@+id/situm_name"
+            android:paddingTop="2dp"
+            android:paddingBottom="4dp"/>
+
+        <ImageView
+            android:layout_width="25dp"
+            android:layout_height="25dp"
+            android:layout_centerVertical="true"
+            android:layout_alignParentRight="true"
+            android:layout_margin="15dp"
+            android:visibility="invisible"
+            android:src="@drawable/ic_action_checked"
+            android:id="@+id/situm_checked"/>
+
+
+
+    </RelativeLayout>
+
+</LinearLayout>

@@ -1,0 +1,26 @@
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context="es.udc.tfg.pruebafinalfirebase.Indoor.IndoorFragment">
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/situm_acc_recyclerview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="vertical">
+    </android.support.v7.widget.RecyclerView>
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/situm_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|right"
+        android:elevation="15dp"
+        app:backgroundTint="@color/colorAccent"
+        android:src="@drawable/ic_situm_logo"
+        android:layout_margin="16dp"/>
+
+
+</android.support.design.widget.CoordinatorLayout>

@@ -43,7 +43,7 @@ public class infoWindowRecyclerViewAdapter extends RecyclerView.Adapter<infoWind
     public infoWindowRecyclerViewAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 
         Context context = parent.getContext();
-        if (context instanceof GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener) {
+        if (context instanceof onMapChatAdapterInteractionListener) {
             mListener = (onMapChatAdapterInteractionListener) context;
         } else {
             throw new RuntimeException(context.toString()

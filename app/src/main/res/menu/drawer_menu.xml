@@ -17,6 +17,10 @@
     <group android:checkableBehavior="single"
         android:id="@+id/drawer_settings_group">
         <item
+            android:icon="@drawable/ic_situm_logo"
+            android:title="Indoor"
+            android:id="@+id/drawer_indoor"/>
+        <item
             android:icon="@android:drawable/ic_menu_preferences"
             android:title="Settings"
             android:id="@+id/drawer_settings"/>
