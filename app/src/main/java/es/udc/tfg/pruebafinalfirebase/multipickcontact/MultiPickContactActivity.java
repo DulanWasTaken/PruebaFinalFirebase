@@ -25,6 +25,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -220,14 +221,17 @@ public class MultiPickContactActivity extends AppCompatActivity implements Loade
                 ArrayList<String> selectedContacts = new ArrayList<>();
                 for(ContactItem contact : contacts){
                     if(contact.isChecked()) {
-                        Log.d(TAG, "SELECTED: " + contact.getName());
                         selectedContacts.add(rc == MainActivity.RC_EMAIL_CONTACTS ? Utils.generateValidEmail(contact.getData()) : Utils.generateValidPhoneNumber(contact.getData()));
                     }
                 }
-                Intent data = new Intent();
-                data.putExtra("selectedContacts", selectedContacts);
-                setResult(RESULT_OK, data);
-                finish();
+                if(selectedContacts.isEmpty())
+                    Toast.makeText(MultiPickContactActivity.this,"No contact selected",Toast.LENGTH_SHORT).show();
+                else{
+                    Intent data = new Intent();
+                    data.putExtra("selectedContacts", selectedContacts);
+                    setResult(RESULT_OK, data);
+                    finish();
+                }
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

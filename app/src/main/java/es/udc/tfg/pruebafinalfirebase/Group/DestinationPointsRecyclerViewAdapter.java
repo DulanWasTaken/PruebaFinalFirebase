@@ -16,6 +16,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
@@ -25,7 +26,7 @@ import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
  */
 
 public class DestinationPointsRecyclerViewAdapter extends RecyclerView.Adapter<DestinationPointsRecyclerViewAdapter.ViewHolder> {
-    private ArrayList<Point> mDataset;
+    private ArrayList<DestinationPoint> mDataset;
     private String TAG = "DestinationPointsRecyclerViewAdapter";
     private DBManager dbManager;
     private String groupId;
@@ -49,7 +50,7 @@ public class DestinationPointsRecyclerViewAdapter extends RecyclerView.Adapter<D
         }
     }
 
-    public DestinationPointsRecyclerViewAdapter(ArrayList<Point> mDataset, String groupId) {
+    public DestinationPointsRecyclerViewAdapter(ArrayList<DestinationPoint> mDataset, String groupId) {
         this.mDataset = mDataset;
         this.groupId = groupId;
         dbManager = DBManager.getInstance();
@@ -72,7 +73,7 @@ public class DestinationPointsRecyclerViewAdapter extends RecyclerView.Adapter<D
     @Override
     public void onBindViewHolder(DestinationPointsRecyclerViewAdapter.ViewHolder holder, final int position) {
         holder.admin.setVisibility(View.INVISIBLE);
-        Point point = mDataset.get(position);
+        DestinationPoint point = mDataset.get(position);
 
         holder.name.setText(point.getName());
         holder.deleteButton.setVisibility(View.VISIBLE);

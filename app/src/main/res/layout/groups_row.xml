@@ -15,7 +15,8 @@
         android:textSize="20dp"
         android:paddingTop="4dp"
         android:paddingBottom="2dp"
-        android:layout_marginLeft="15dp"/>
+        android:layout_marginLeft="15dp"
+        android:layout_toStartOf="@+id/edit_button"/>
 
     <TextView
         android:layout_width="wrap_content"
@@ -24,7 +25,8 @@
         android:layout_below="@+id/group_name"
         android:layout_alignLeft="@+id/group_name"
         android:paddingTop="2dp"
-        android:paddingBottom="4dp"/>
+        android:paddingBottom="4dp"
+        android:layout_toStartOf="@+id/edit_button"/>
 
     <es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView
         android:layout_width="45dp"
@@ -41,7 +43,8 @@
         android:layout_centerVertical="true"
         android:src="@drawable/ic_editgroup"
         android:background="@android:color/transparent"
-        android:layout_toStartOf="@+id/group_time"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="100dp"
         android:layout_marginRight="7dp"/>
 
     <TextView

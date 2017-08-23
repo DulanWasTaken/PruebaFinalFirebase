@@ -23,6 +23,7 @@ public class MapMarker {
     int type;
     boolean active;
     ArrayList<Message> messages;
+    String dpHour;
 
     public MapMarker() {
     }
@@ -40,13 +41,14 @@ public class MapMarker {
             this.messages.add(msg);
     }
 
-    public MapMarker(MarkerOptions markerOptions, String Id, String groupId, int type) {
+    public MapMarker(MarkerOptions markerOptions, String Id, String groupId, String hour, int type) {
         this.marker = null;
         this.Id = Id;
         this.groupId = groupId;
         this.type = type;
         this.markerOptions = markerOptions;
         this.active = true;
+        this.dpHour = hour;
     }
 
     public boolean isActive() {
@@ -111,5 +113,13 @@ public class MapMarker {
 
     public void addMessage(Message msg){
         messages.add(msg);
+    }
+
+    public String getDpHour() {
+        return dpHour;
+    }
+
+    public void setDpHour(String dpHour) {
+        this.dpHour = dpHour;
     }
 }

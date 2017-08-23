@@ -2,6 +2,7 @@ package es.udc.tfg.pruebafinalfirebase;
 
 import android.Manifest;
 import android.app.Dialog;
+import android.app.TimePickerDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -15,6 +16,7 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.location.LocationManager;
 import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
@@ -50,6 +52,7 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.TimePicker;
 import android.widget.Toast;
 import android.text.InputType;
 
@@ -77,6 +80,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Map;
 
@@ -95,6 +99,7 @@ import es.udc.tfg.pruebafinalfirebase.Group.Groups_fragment;
 import es.udc.tfg.pruebafinalfirebase.Indoor.IndoorFragment;
 import es.udc.tfg.pruebafinalfirebase.Indoor.IndoorRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Indoor.SitumAccount;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPointFragment;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
@@ -173,6 +178,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     private ActionBar ab;
 
     public FragmentManager fragmentManager;
+    private LocationManager locationManager;
     public SharedPreferences pref;
     public SharedPreferences appPreferences;
 
@@ -226,7 +232,9 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
 
 
         /************************** INICIALIZAR VARIABLES ***************************/
+        //SitumSdk.init(this);
         fragmentManager = getSupportFragmentManager();
+        locationManager = (LocationManager) getSystemService( Context.LOCATION_SERVICE );
         PreferenceManager.setDefaultValues(MainActivity.this,R.xml.preferences,false);
         appPreferences = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
         pref = getSharedPreferences("MYSERVICE", Context.MODE_PRIVATE);
@@ -318,14 +326,24 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         locationFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(myLocationEnabled) {
-                    locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccent)));
-                    disableMyLocation();
-                    Snackbar.make(v, "Location disabled", Snackbar.LENGTH_LONG).show();
-                }else{
-                    locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccentDark)));
-                    enableMyLocation();
-                    Snackbar.make(v, "Location enabled", Snackbar.LENGTH_LONG).show();
+                if ( !locationManager.isProviderEnabled( LocationManager.GPS_PROVIDER ) ) {
+                    Snackbar.make(getCurrentFocus(),"Enable GPS",Snackbar.LENGTH_SHORT).setAction("settings", new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                        }
+                    }).show();
+                } else{
+
+                    if(myLocationEnabled) {
+                        locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccent)));
+                        disableMyLocation();
+                        Snackbar.make(v, "Location disabled", Snackbar.LENGTH_LONG).show();
+                    }else{
+                        locationFab.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorAccentDark)));
+                        enableMyLocation();
+                        Snackbar.make(v, "Location enabled", Snackbar.LENGTH_LONG).show();
+                    }
                 }
             }
         });
@@ -486,6 +504,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
 
     private void setGroupsFragment(){
         navigationView.setCheckedItem(R.id.drawer_groups);
+        currentBuildingId = "";
 
         if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
             cameraPosition = mGoogleMap.getCameraPosition();
@@ -528,6 +547,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     }
 
     private void setEditGroupFragment(String groupId){
+        currentBuildingId = "";
         if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
             cameraPosition = mGoogleMap.getCameraPosition();
         }
@@ -549,6 +569,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
 
         ab.setDefaultDisplayHomeAsUpEnabled(true);
         ab.setHomeAsUpIndicator(R.drawable.ic_action_arrow_back);
+        ab.setTitle(dbManager.findGroupById(groupId).getName());
 
         EditGroupFragment editGroupFragment = EditGroupFragment.newInstance(groupId);
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -563,6 +584,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     }
 
     private void setMessagesFragment(String groupId){
+        currentBuildingId = "";
         if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
             cameraPosition = mGoogleMap.getCameraPosition();
         }
@@ -584,6 +606,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
 
         ab.setDefaultDisplayHomeAsUpEnabled(true);
         ab.setHomeAsUpIndicator(R.drawable.ic_action_arrow_back);
+        ab.setTitle(dbManager.findGroupById(groupId).getName());
 
         MessagesFragment messagesFragment = MessagesFragment.newInstance(groupId);
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -598,6 +621,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     }
 
     private void setIpFragment(String userId, String ipId){
+        currentBuildingId = "";
         if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
             cameraPosition = mGoogleMap.getCameraPosition();
         }
@@ -636,6 +660,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     }
 
     private void setSettingsFragment(){
+        currentBuildingId = "";
         navigationView.setCheckedItem(R.id.drawer_settings);
 
         if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
@@ -674,6 +699,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     }
 
     private void setIndoorFragment(String acc){
+        currentBuildingId = "";
         navigationView.setCheckedItem(R.id.drawer_indoor);
 
         if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
@@ -716,12 +742,15 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         Fragment filter = fragmentManager.findFragmentByTag(FILTER_FRAGMENT_TAG);
         Fragment quickMsg = fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);
         Fragment requests = fragmentManager.findFragmentByTag(NOTIF_FRAGMENT_TAG);
+        Fragment level = fragmentManager.findFragmentByTag(LEVEL_FRAGMENT_TAG);
         if(filter!=null)
             transaction.remove(filter);
         if(quickMsg!=null)
             transaction.remove(quickMsg);
         if(requests!=null)
             transaction.remove(requests);
+        if(level!=null)
+            transaction.remove(level);
         transaction.commit();
         fragmentManager.executePendingTransactions();
     }
@@ -802,7 +831,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     }
 
     private int findLevelFromFloor(String floorId){
-        for(Floor floor : currentFloors){
+        if(currentFloors!=null)
+            for(Floor floor : currentFloors){
             if(floor.getIdentifier().equals(floorId))
                 return floor.getLevel();
         }
@@ -815,30 +845,32 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         int index = dbManager.findMarker(userId,groupId);
 
         final MarkerOptions options;
-
+        final Bitmap icon;
 
         if(!userId.equals(dbManager.getId())) {
             if(location.getBuildingId()!=null && location.getFloorId()!=null && location.isIndoor())
-                options = new MarkerOptions()
-                        .position(new LatLng(location.getLat(), location.getLng()))
-                        .title(nick)
-                        .anchor((float)0.5,(float)1)
-                        .icon(BitmapDescriptorFactory.fromBitmap(Utils.overlay(BitmapFactory.decodeResource(getResources(),R.drawable.ic_map_marker),BitmapFactory.decodeResource(getResources(),R.drawable.level_badge_background),userId,location.getBuildingId().equals(currentBuildingId)?findLevelFromFloor(location.getFloorId()):NO_LEVEL,getResources().getDisplayMetrics().density)));
+                icon = Utils.overlay(BitmapFactory.decodeResource(getResources(), R.drawable.ic_map_marker), BitmapFactory.decodeResource(getResources(), R.drawable.level_badge_background), userId, location.getBuildingId().equals(currentBuildingId) ? findLevelFromFloor(location.getFloorId()) : NO_LEVEL, getResources().getDisplayMetrics().density, false);
             else
-                options = new MarkerOptions()
+                icon = Utils.overlay(BitmapFactory.decodeResource(getResources(), R.drawable.ic_map_marker), BitmapFactory.decodeResource(getResources(), R.drawable.level_badge_background), userId, NO_LEVEL, getResources().getDisplayMetrics().density, false);
+
+
+            options = new MarkerOptions()
                         .position(new LatLng(location.getLat(), location.getLng()))
                         .title(nick)
-                        .anchor((float)0.5,(float)1)
-                        .icon(BitmapDescriptorFactory.fromBitmap(Utils.overlay(BitmapFactory.decodeResource(getResources(),R.drawable.ic_map_marker),BitmapFactory.decodeResource(getResources(),R.drawable.level_badge_background),userId,NO_LEVEL,getResources().getDisplayMetrics().density)));
+                        .anchor((float) 0.5, (float) 1)
+                        .icon(BitmapDescriptorFactory.fromBitmap(icon));
 
         }else {
+
+            icon = BitmapFactory.decodeResource(getResources(),location.getBearing()==(float)0.0?R.drawable.ic_mylocation_nobearing:R.drawable.ic_mylocation);
             options = new MarkerOptions()
                     .position(new LatLng(location.getLat(), location.getLng()))
                     .rotation(location.getBearing())
                     .title("Me")
                     .anchor((float)0.5,(float)0.5)
+                    .infoWindowAnchor((float)0.5,(float)0.5)
                     .flat(true)
-                    .icon(BitmapDescriptorFactory.fromResource(location.getBearing()==(float)0.0?R.drawable.ic_mylocation_nobearing:R.drawable.ic_mylocation));
+                    .icon(BitmapDescriptorFactory.fromBitmap(icon));
 
            /* options = new MarkerOptions()
                     .position(new LatLng(location.getLat(), location.getLng()))
@@ -869,8 +901,11 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             if(m!=null && drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap!=null){
                 m.setPosition(new LatLng(location.getLat(),location.getLng()));
                 m.setVisible(location.isActive() && dbManager.isFiltered(groupId));
+                m.setIcon(BitmapDescriptorFactory.fromBitmap(icon));
                 if(userId!=dbManager.getId())
                     m.setTag(mm.getMessages());
+                else
+                    m.setRotation(location.getBearing());
             }else if (drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap!=null){
                 Marker newM = mGoogleMap.addMarker(options);
                 newM.setVisible(location.isActive() && dbManager.isFiltered(groupId));
@@ -1022,7 +1057,10 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
 
     @Override
     public void onMyLocationChanged(final Location location){
-        if(location.isIndoor()){
+        if(location.isIndoor() && drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap!=null){
+            LevelPickerFragment lpf = (LevelPickerFragment) fragmentManager.findFragmentByTag(LEVEL_FRAGMENT_TAG);
+            if(lpf!=null)
+                lpf.setLevelLocation(location.getFloorId());
             if(!currentBuildingId.equals(location.getBuildingId())){
                 currentBuildingId = location.getBuildingId();
                 //pb.show();
@@ -1037,8 +1075,9 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                     @Override
                     public void onSuccess(Collection<Building> buildings) {
                         for(Building building:buildings){
-                            if(building.getIdentifier().equals(currentBuilding)){
+                            if(building.getIdentifier().equals(currentBuildingId)){
                                 currentBuilding = building;
+
                                 situmCommunicationManager.fetchFloorsFromBuilding(building, new Handler<Collection<Floor>>() {
                                     @Override
                                     public void onSuccess(Collection<Floor> floors) {
@@ -1063,6 +1102,12 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
 
                     }
                 });
+            }
+        } else {
+            Fragment fragment = fragmentManager.findFragmentByTag(LEVEL_FRAGMENT_TAG);
+            if(fragment!=null){
+                fragmentManager.beginTransaction().remove(fragment).commit();
+                fragmentManager.executePendingTransactions();
             }
         }
         locationChanged(location,dbManager.getId(),"","");
@@ -1167,6 +1212,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                                     Snackbar.make(MainActivity.this.getCurrentFocus(),"Incorrect user or password",Snackbar.LENGTH_SHORT).show();
                                 }
                             });
+                        } else {
+                            Snackbar.make(MainActivity.this.getCurrentFocus(),"email or password can't be empty",Snackbar.LENGTH_SHORT).show();
                         }
                     }
                 })
@@ -1471,6 +1518,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                             String nick = et2.getText().toString();
                             if (!phoneNumber.equals("")&&!nick.equals("")){
                                 dbManager.createProfile(phoneNumber,nick);
+                            } else {
+                                Toast.makeText(MainActivity.this,"Nick or phone number can't be empty",Toast.LENGTH_SHORT).show();
                             }
                         }
                     })
@@ -1525,7 +1574,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     }
 
     @Override
-    public void destinationPointAdded(Point p, String groupId) {
+    public void destinationPointAdded(DestinationPoint p, String groupId) {
         int index = dbManager.findMarker(p.getIpId(),groupId);
 
         final MarkerOptions options = new MarkerOptions()
@@ -1536,7 +1585,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                 .anchor((float)0.3,(float)0.9);
 
         if(index == -1){
-            MapMarker mapMarker = new MapMarker(options,p.getIpId(),groupId,MapMarker.DESTINATION_MARKER);
+            MapMarker mapMarker = new MapMarker(options,p.getIpId(),groupId,p.getDestinationTime(),MapMarker.DESTINATION_MARKER);
             if(mGoogleMap!=null && drawerFlag.equals(MAP_FRAGMENT_TAG)){
                 Marker marker = mGoogleMap.addMarker(options);
                 marker.setVisible(dbManager.isFiltered(groupId));
@@ -1548,7 +1597,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     }
 
     @Override
-    public void destinationPointChanged(Point p, String groupId) {
+    public void destinationPointChanged(DestinationPoint p, String groupId) {
         int index = dbManager.findMarker(p.getIpId(),groupId);
 
         final MarkerOptions options = new MarkerOptions()
@@ -1572,7 +1621,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     }
 
     @Override
-    public void destinationPointRemoved(Point p, String groupId) {
+    public void destinationPointRemoved(DestinationPoint p, String groupId) {
         int index = dbManager.findMarker(p.getIpId(),groupId);
 
         if(index >=0 && index < DBManager.mapMarkers.size()){
@@ -1655,7 +1704,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                 if(m.getType() == MapMarker.LOCATION_MARKER)
                     marker.setTag(m.getMessages());
                 else if (m.getType() == MapMarker.DESTINATION_MARKER)
-                    marker.setTag(new Point(options.getPosition().latitude,options.getPosition().longitude,options.getTitle(),m.getId()));
+                    marker.setTag(new DestinationPoint(options.getPosition().latitude,options.getPosition().longitude,options.getTitle(),m.getId(),m.getDpHour()));
 
                 m.setMarker(marker);
             }
@@ -1688,8 +1737,6 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         }
     }
 
-
-
     @Override
     public void onMapLongClick(final LatLng point){
         /*locationChanged(new Location(point.latitude,point.longitude,0),dbManager.getId(),dbManager.getNick(),"");*/
@@ -1712,6 +1759,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                 if (item == 0){
                     final LinearLayout ll = new LinearLayout(MainActivity.this);
                     ll.setOrientation(LinearLayout.VERTICAL);
+                    ll.setPadding(7,7,7,7);
                     final EditText et = new EditText(MainActivity.this);
                     final EditText et2 = new EditText(MainActivity.this);
                     et.setHint("Name");
@@ -1728,18 +1776,60 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                                     InterestPoint ip = null;
                                     String name = et.getText().toString();
                                     String description = et2.getText().toString();
-                                    if (!name.equals("")&&!description.equals("")){
+                                    if (!name.equals("")){
                                         ip = dbManager.createInterestPoint(name,description,point.latitude,point.longitude);
+                                    } else {
+                                        Snackbar.make(MainActivity.this.getCurrentFocus(),"Name field can't be empty",Snackbar.LENGTH_SHORT).show();
                                     }
                                 }
                             })
                             .show();
                 }else if(item == 1){
+                    final LinearLayout ll = new LinearLayout(MainActivity.this);
+                    ll.setOrientation(LinearLayout.VERTICAL);
+                    ll.setPadding(7,7,7,7);
                     final EditText et = new EditText(MainActivity.this);
                     et.setHint("Name");
+                    final EditText tv = new EditText(MainActivity.this);
+                    tv.setHint("Select hour");
+                    tv.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                        @Override
+                        public void onFocusChange(View v, boolean hasFocus) {
+                            if(hasFocus){
+                                Calendar mcurrentTime = Calendar.getInstance();
+                                int hour = mcurrentTime.get(Calendar.HOUR_OF_DAY);
+                                int minute = mcurrentTime.get(Calendar.MINUTE);
+                                TimePickerDialog mTimePicker;
+                                mTimePicker = new TimePickerDialog(MainActivity.this, new TimePickerDialog.OnTimeSetListener() {
+                                    @Override
+                                    public void onTimeSet(TimePicker timePicker, int selectedHour, int selectedMinute) {
+                                        String h = String.valueOf(selectedHour);
+                                        String m = String.valueOf(selectedMinute);
+                                        if(selectedHour<10)
+                                            h = "0"+h;
+                                        if(selectedMinute<10)
+                                            m = "0"+m;
+
+                                        tv.setText( h + ":" + m);
+                                        tv.clearFocus();
+                                    }
+                                }, hour, minute, true);
+                                mTimePicker.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                                    @Override
+                                    public void onDismiss(DialogInterface dialog) {
+                                        tv.clearFocus();
+                                    }
+                                });
+                                mTimePicker.setTitle("Select Time");
+                                mTimePicker.show();
+                            }
+                        }
+                    });
+                    ll.addView(et);
+                    ll.addView(tv);
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("Creating destination point")
-                            .setView(et)
+                            .setView(ll)
                             .setCancelable(true)
                             .setPositiveButton("Create", new DialogInterface.OnClickListener() {
                                 @Override
@@ -1749,9 +1839,17 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                                     if (!name.equals("")){
                                         for(Map.Entry<Group,Boolean> entry : DBManager.mGroups.entrySet()){
                                             if(entry.getValue())
-                                                dbManager.createDestinationPoint(name,entry.getKey().getId(),point.latitude,point.longitude);
+                                                dbManager.createDestinationPoint(name,entry.getKey().getId(),point.latitude,point.longitude,tv.getText().toString());
                                         }
+                                    } else {
+                                        Snackbar.make(MainActivity.this.getCurrentFocus(),"Name field can't be empty",Snackbar.LENGTH_SHORT).show();
                                     }
+                                }
+                            })
+                            .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.cancel();
                                 }
                             })
                             .show();
@@ -1852,11 +1950,11 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                             ip.setLat(marker.getPosition().latitude);
                             ip.setLng(marker.getPosition().longitude);
                             dbManager.saveInterestPoint(ip.getIpId(),ip);
-                        }else if(tag instanceof Point){
-                            Point p = (Point) marker.getTag();
+                        }else if(tag instanceof DestinationPoint){
+                            DestinationPoint p = (DestinationPoint) marker.getTag();
                             p.setLat(marker.getPosition().latitude);
                             p.setLng(marker.getPosition().longitude);
-                            dbManager.editDestinationPoint(groupIdMarker(p.getIpId()),p.getIpId(),p.getName(),p.getLat(),p.getLng());
+                            dbManager.editDestinationPoint(groupIdMarker(p.getIpId()),p.getIpId(),p.getName(),p.getLat(),p.getLng(),p.getDestinationTime());
                         }
                     }
                 })
@@ -1873,26 +1971,70 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     public void onInfoWindowClick(Marker marker) {
         Object tag = marker.getTag();
         removeSecondaryViews();
-        if(tag instanceof Message){
+        if(tag instanceof ArrayList){
 
         } else if (tag instanceof InterestPoint){
             InterestPoint ip = (InterestPoint) tag;
             setIpFragment(ip.getUserId(),ip.getIpId());
-        } else if (tag instanceof Point){
+        } else if (tag instanceof DestinationPoint){
 
-            final Point p = (Point) tag;
+            final DestinationPoint p = (DestinationPoint) tag;
+            final LinearLayout ll = new LinearLayout(MainActivity.this);
+            ll.setOrientation(LinearLayout.VERTICAL);
+            ll.setPadding(7,7,7,7);
             final EditText et = new EditText(MainActivity.this);
             et.setText(p.getName());
+            final EditText tv = new EditText(MainActivity.this);
+            tv.setText(p.getDestinationTime());
+
+            tv.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    if(hasFocus){
+                        Calendar mcurrentTime = Calendar.getInstance();
+                        int hour = mcurrentTime.get(Calendar.HOUR_OF_DAY);
+                        int minute = mcurrentTime.get(Calendar.MINUTE);
+                        TimePickerDialog mTimePicker;
+                        mTimePicker = new TimePickerDialog(MainActivity.this, new TimePickerDialog.OnTimeSetListener() {
+                            @Override
+                            public void onTimeSet(TimePicker timePicker, int selectedHour, int selectedMinute) {
+                                String h = String.valueOf(selectedHour);
+                                String m = String.valueOf(selectedMinute);
+                                if(selectedHour<10)
+                                    h = "0"+h;
+                                if(selectedMinute<10)
+                                    m = "0"+m;
+
+                                tv.setText( h + ":" + m);
+                                tv.clearFocus();
+                            }
+                        }, hour, minute, true);
+                        mTimePicker.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                            @Override
+                            public void onDismiss(DialogInterface dialog) {
+                                tv.clearFocus();
+                            }
+                        });
+                        mTimePicker.setTitle("Select Time");
+                        mTimePicker.show();
+                    }
+                }
+            });
+
+            ll.addView(et);
+            ll.addView(tv);
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle("Edit destination point name")
-                    .setView(et)
+                    .setView(ll)
                     .setCancelable(true)
                     .setPositiveButton("Save", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             String name = et.getText().toString();
                             if (!name.equals("")){
-                                dbManager.editDestinationPoint(groupIdMarker(p.getIpId()),p.getIpId(),name,p.getLat(),p.getLng());
+                                dbManager.editDestinationPoint(groupIdMarker(p.getIpId()),p.getIpId(),name,p.getLat(),p.getLng(),tv.getText().toString());
+                            } else {
+                                Snackbar.make(MainActivity.this.getCurrentFocus(),"Name field can't be empty",Snackbar.LENGTH_SHORT).show();
                             }
                         }
                     })
@@ -1976,6 +2118,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                                     String name = et.getText().toString();
                                     if (!name.equals("")) {
                                         dbManager.createGroup(name,selectedContacts);
+                                    } else {
+                                        Snackbar.make(MainActivity.this.getCurrentFocus(),"Name field can't be empty",Snackbar.LENGTH_SHORT).show();
                                     }
                                 }
                             })
@@ -2090,6 +2234,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                     transaction.commit();
                     fragmentManager.popBackStack();
                 }else{
+                    removeSecondaryViews();
                     notifications.setBackground(getResources().getDrawable(R.drawable.shape_notifs_clicked));
                     Notifications_fragment fragment = new Notifications_fragment();
                     transaction.replace(R.id.notif_fragment_content,fragment,NOTIF_FRAGMENT_TAG);

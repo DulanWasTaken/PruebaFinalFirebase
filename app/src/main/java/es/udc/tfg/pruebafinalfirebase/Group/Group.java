@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 
 /**
@@ -17,7 +18,7 @@ public class Group {
     private String name;
     private ArrayList<GroupMember> membersId;
     private ArrayList<GroupMember> invitations;
-    private Map<String,Point> destinationPoints;
+    private Map<String,DestinationPoint> destinationPoints;
     private ArrayList<String> admins;
     private long time;
     private String id;
@@ -137,11 +138,11 @@ public class Group {
         }
     }
 
-    public Map<String, Point> getDestinationPoints() {
+    public Map<String, DestinationPoint> getDestinationPoints() {
         return destinationPoints;
     }
 
-    public void setDestinationPoints(Map<String, Point> destinationPoints) {
+    public void setDestinationPoints(Map<String, DestinationPoint> destinationPoints) {
         this.destinationPoints = destinationPoints;
     }
 }

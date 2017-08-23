@@ -18,6 +18,7 @@ public class LevelPickerFragment extends Fragment {
 
     private Context context;
     private RecyclerView mRecyclerView;
+    private levelPickerRecyclerViewAdapter adapter;
 
 
     public LevelPickerFragment() {
@@ -51,6 +52,12 @@ public class LevelPickerFragment extends Fragment {
     }
 
     public void initFloorList(ArrayList<Floor> floors, String currentFloor){
-        mRecyclerView.setAdapter(new levelPickerRecyclerViewAdapter(floors,currentFloor));
+        adapter = new levelPickerRecyclerViewAdapter(floors,currentFloor,"");
+        mRecyclerView.setAdapter(adapter);
+    }
+
+    public void setLevelLocation(String id){
+        adapter = new levelPickerRecyclerViewAdapter(adapter.getmDataset(),adapter.getCurrentFloor(),id);
+        mRecyclerView.setAdapter(adapter);
     }
 }

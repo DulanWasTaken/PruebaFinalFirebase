@@ -12,4 +12,5 @@
     <color name="text_white">#FFFFFF</color>
     <color name="background_gray">#A6E7E7E7</color>
     <color name="level_badge_green">#61aa56</color>
+    <color name="location">#1651D9</color>
 </resources>

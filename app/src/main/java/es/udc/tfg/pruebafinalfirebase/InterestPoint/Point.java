@@ -7,6 +7,7 @@ package es.udc.tfg.pruebafinalfirebase.InterestPoint;
 public class Point {
     public double lat,lng;
     public String name,ipId;
+    public long time;
 
     public Point(){
 
@@ -17,6 +18,7 @@ public class Point {
         this.lng = lng;
         this.name = name;
         this.ipId = ipId;
+        this.time = System.currentTimeMillis();
     }
 
     public double getLat() {
@@ -49,5 +51,9 @@ public class Point {
 
     public void setIpId(String ipId) {
         this.ipId = ipId;
+    }
+
+    public long getTime() {
+        return time;
     }
 }

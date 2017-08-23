@@ -54,6 +54,7 @@ import es.situm.sdk.model.cartography.Floor;
 import es.situm.sdk.utils.Handler;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.Indoor.SitumAccount;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
@@ -129,10 +130,11 @@ public class mService extends Service implements DBManager.DBManagerInteractions
             @Override
             public void onLocationChanged(@NonNull es.situm.sdk.model.location.Location location) {
                 es.udc.tfg.pruebafinalfirebase.Location mLocation;
-                Toast.makeText(mService.this,"Indoor?"+location.isIndoor()+" bearing:"+location.getBearing().toString(),Toast.LENGTH_SHORT).show();
-                if(location.isIndoor())
-                    mLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getCoordinate().getLatitude(),location.getCoordinate().getLongitude(),location.getAccuracy(),(float)location.getBearing().degrees(),true,true,location.getBuildingIdentifier(),location.getFloorIdentifier());
-                else
+                //Toast.makeText(mService.this,"Indoor?"+location.isIndoor()+" bearing:"+location.getBearing().toString(),Toast.LENGTH_SHORT).show();
+                if(location.isIndoor()) {
+                    mLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getCoordinate().getLatitude(), location.getCoordinate().getLongitude(), location.getAccuracy(), (float) location.getBearing().degrees(), true, true, location.getBuildingIdentifier(), location.getFloorIdentifier());
+
+                }else
                     mLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getCoordinate().getLatitude(),location.getCoordinate().getLongitude(),location.getAccuracy(),(float)location.getBearing().degrees(),true,false);
 
                 if(bound)
@@ -555,17 +557,17 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     }
 
     @Override
-    public void destinationPointAdded(Point p, String groupId) {
+    public void destinationPointAdded(DestinationPoint p, String groupId) {
 
     }
 
     @Override
-    public void destinationPointChanged(Point p, String groupId) {
+    public void destinationPointChanged(DestinationPoint p, String groupId) {
 
     }
 
     @Override
-    public void destinationPointRemoved(Point p, String groupId) {
+    public void destinationPointRemoved(DestinationPoint p, String groupId) {
 
     }
 

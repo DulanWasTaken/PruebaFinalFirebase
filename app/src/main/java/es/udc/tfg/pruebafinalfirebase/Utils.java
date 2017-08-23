@@ -195,14 +195,17 @@ public class Utils {
         return res;
     }
 
-    public static Bitmap overlay(Bitmap bmp1, Bitmap bmp2, String user, int level,float scale) {
+    public static Bitmap overlay(Bitmap bmp1, Bitmap bmp2, String user, int level,float scale,boolean myLocation) {
         Bitmap bmOverlay = Bitmap.createBitmap(bmp1.getWidth(), bmp1.getHeight(), bmp1.getConfig());
         Canvas canvas = new Canvas(bmOverlay);
-
-        Paint paint = new Paint();
-        ColorFilter filter = new PorterDuffColorFilter(Color.HSVToColor(stringToHSVColor(user)), PorterDuff.Mode.SRC_IN);
-        paint.setColorFilter(filter);
-        canvas.drawBitmap(bmp1, new Matrix(), paint);
+        if(myLocation)
+            canvas.drawBitmap(bmp1, new Matrix(), null);
+        else {
+            Paint paint = new Paint();
+            ColorFilter filter = new PorterDuffColorFilter(Color.HSVToColor(stringToHSVColor(user)), PorterDuff.Mode.SRC_IN);
+            paint.setColorFilter(filter);
+            canvas.drawBitmap(bmp1, new Matrix(), paint);
+        }
 
         if(level == MainActivity.NO_LEVEL)
             return bmOverlay;

@@ -8,6 +8,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.android.gms.maps.GoogleMap;
@@ -16,6 +17,7 @@ import com.google.android.gms.maps.model.Marker;
 import java.util.ArrayList;
 import java.util.List;
 
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Notifications.NotifRecyclerViewAdapter;
@@ -84,6 +86,14 @@ public class mInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
             }*/
         } else if (tag instanceof InterestPoint) {
             InterestPoint ip = (InterestPoint) tag;
+        } else if (tag instanceof DestinationPoint){
+            DestinationPoint dp = (DestinationPoint) tag;
+            View myContentsViewText = inflater.inflate(R.layout.destination_point_infowindow, null);
+            TextView name = (TextView) myContentsViewText.findViewById(R.id.dp_name_infowindow);
+            TextView hour = (TextView) myContentsViewText.findViewById(R.id.dp_hour_infowindow);
+            name.setText(dp.getName());
+            hour.setText(dp.getDestinationTime());
+            return myContentsViewText;
         }
         return null;
     }

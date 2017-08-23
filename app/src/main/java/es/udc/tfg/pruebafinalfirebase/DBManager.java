@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.Group.GroupMember;
 import es.udc.tfg.pruebafinalfirebase.Indoor.SitumAccount;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
@@ -345,7 +346,7 @@ public class DBManager {
                         @Override
                         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                             if(dataSnapshot.exists()){
-                                Point p = dataSnapshot.getValue(Point.class);
+                                DestinationPoint p = dataSnapshot.getValue(DestinationPoint.class);
                                 if(p!=null && mListener!=null)
                                     mListener.destinationPointAdded(p,groupId);
                             }
@@ -354,7 +355,7 @@ public class DBManager {
                         @Override
                         public void onChildChanged(DataSnapshot dataSnapshot, String s) {
                             if(dataSnapshot.exists()){
-                                Point p = dataSnapshot.getValue(Point.class);
+                                DestinationPoint p = dataSnapshot.getValue(DestinationPoint.class);
                                 if(p!=null && mListener!=null)
                                     mListener.destinationPointChanged(p,groupId);
                             }
@@ -363,7 +364,7 @@ public class DBManager {
                         @Override
                         public void onChildRemoved(DataSnapshot dataSnapshot) {
                             if(dataSnapshot.exists()){
-                                Point p = dataSnapshot.getValue(Point.class);
+                                DestinationPoint p = dataSnapshot.getValue(DestinationPoint.class);
                                 if(p!=null && mListener!=null)
                                     mListener.destinationPointRemoved(p,groupId);
                             }
@@ -1083,10 +1084,10 @@ public class DBManager {
         ref.setValue(myIp);
     }
 
-    public void createDestinationPoint(String name, String groupId, double lat, double lng){
+    public void createDestinationPoint(String name, String groupId, double lat, double lng, String hour){
 
         DatabaseReference ref = DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_DESTINATIONS_REFERENCE).push();
-        Point destinationPoint = new Point(lat,lng,name,ref.getKey());
+        DestinationPoint destinationPoint = new DestinationPoint(lat,lng,name,ref.getKey(),hour);
         ref.setValue(destinationPoint);
     }
 
@@ -1096,8 +1097,8 @@ public class DBManager {
         }
     }
 
-    public void editDestinationPoint(String groupId, String pId, String name, double lat, double lng){
-        Point p = new Point(lat,lng,name,pId);
+    public void editDestinationPoint(String groupId, String pId, String name, double lat, double lng, String hour){
+        DestinationPoint p = new DestinationPoint(lat,lng,name,pId,hour);
         DBroot.child(DB_GROUPS_REFERENCE).child(groupId).child(DB_GROUPS_DESTINATIONS_REFERENCE).child(pId).setValue(p);
     }
 
@@ -1164,9 +1165,9 @@ public class DBManager {
         void initInterestPoint(InterestPoint interestPoint,String userId, String ipId);
         void interestPointAdded(InterestPoint ip);
         void interestPointRemoved(InterestPoint ip);
-        void destinationPointAdded(Point p, String groupId);
-        void destinationPointChanged(Point p, String groupId);
-        void destinationPointRemoved(Point p, String groupId);
+        void destinationPointAdded(DestinationPoint p, String groupId);
+        void destinationPointChanged(DestinationPoint p, String groupId);
+        void destinationPointRemoved(DestinationPoint p, String groupId);
         void initSitumAccountList(ArrayList<SitumAccount> situmAccounts);
         void enableIndoor(SitumAccount account);
     }

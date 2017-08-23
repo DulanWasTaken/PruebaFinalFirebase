@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
@@ -120,7 +121,7 @@ public class EditGroupFragment extends Fragment {
             destinationsRecyclerView.setVisibility(View.GONE);
             destTv.setVisibility(View.GONE);
         }else{
-            ArrayList<Point> destinations = new ArrayList<>(group.getDestinationPoints().values());
+            ArrayList<DestinationPoint> destinations = new ArrayList<>(group.getDestinationPoints().values());
             destinationsRecyclerView.setAdapter(new DestinationPointsRecyclerViewAdapter(destinations,groupId));
         }
 
