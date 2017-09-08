@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Map;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -7,8 +7,6 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.android.gms.maps.GoogleMap;
@@ -17,11 +15,12 @@ import com.google.android.gms.maps.model.Marker;
 import java.util.ArrayList;
 import java.util.List;
 
+import es.udc.tfg.pruebafinalfirebase.Core.SettingsFragment;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
+import es.udc.tfg.pruebafinalfirebase.Map.infoWindowRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
-import es.udc.tfg.pruebafinalfirebase.Notifications.NotifRecyclerViewAdapter;
-import es.udc.tfg.pruebafinalfirebase.multipickcontact.SimpleDividerItemDecoration;
+import es.udc.tfg.pruebafinalfirebase.R;
 
 /**
  * Created by Usuario on 18/04/2017.

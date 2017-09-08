@@ -1,7 +1,6 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Utils;
 
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
@@ -14,8 +13,8 @@ import android.graphics.Rect;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
+
+import es.udc.tfg.pruebafinalfirebase.Core.MainActivity;
 
 /**
  * Created by Usuario on 19/12/2016.

@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Core;
 
 import android.Manifest;
 import android.app.Dialog;
@@ -17,9 +17,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.CountDownTimer;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
+import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
@@ -48,6 +50,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Switch;
@@ -94,6 +97,7 @@ import es.situm.sdk.model.location.Coordinate;
 import es.situm.sdk.utils.Handler;
 import es.udc.tfg.pruebafinalfirebase.Group.EditGroupFragment;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
+import es.udc.tfg.pruebafinalfirebase.Group.GroupCreationFragment;
 import es.udc.tfg.pruebafinalfirebase.Group.GroupsRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Group.Groups_fragment;
 import es.udc.tfg.pruebafinalfirebase.Indoor.IndoorFragment;
@@ -102,23 +106,33 @@ import es.udc.tfg.pruebafinalfirebase.Indoor.SitumAccount;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPointFragment;
-import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.LevelPicker.LevelPickerFragment;
 import es.udc.tfg.pruebafinalfirebase.LevelPicker.levelPickerRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.Map.Location;
+import es.udc.tfg.pruebafinalfirebase.Map.MapMarker;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Messages.MessagesFragment;
 import es.udc.tfg.pruebafinalfirebase.Filter.FilterRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Filter.Filter_fragment;
 import es.udc.tfg.pruebafinalfirebase.Messages.QuickMsgFragment;
 import es.udc.tfg.pruebafinalfirebase.Messages.msgRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.R;
+import es.udc.tfg.pruebafinalfirebase.Utils.Utils;
+import es.udc.tfg.pruebafinalfirebase.Map.infoWindowRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.Map.mInfoWindowAdapter;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.MultiPickContactActivity;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Notifications_fragment;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
+import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.perf.metrics.AddTrace;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
-public class MainActivity extends AppCompatActivity implements levelPickerRecyclerViewAdapter.onLevelPickerAdapterInteractionListener,IndoorRecyclerViewAdapter.OnIndoorAdapterInteractionListener,IndoorFragment.OnIndoorFragmentInteractionListener,FilterRecyclerViewAdapter.OnFilterFragmentAdapterInteractionListener,msgRecyclerViewAdapter.OnMsgAdapterInteractionListener,GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
+public class MainActivity extends AppCompatActivity implements GroupCreationFragment.OnGroupCreationFragmentInteractionListener,levelPickerRecyclerViewAdapter.onLevelPickerAdapterInteractionListener,IndoorRecyclerViewAdapter.OnIndoorAdapterInteractionListener,IndoorFragment.OnIndoorFragmentInteractionListener,FilterRecyclerViewAdapter.OnFilterFragmentAdapterInteractionListener,msgRecyclerViewAdapter.OnMsgAdapterInteractionListener,GoogleMap.OnInfoWindowClickListener,infoWindowRecyclerViewAdapter.onMapChatAdapterInteractionListener,InterestPointFragment.OnInterestPointFragmentInteractionListener,Filter_fragment.OnFilterFragmentInteractionListener,Groups_fragment.OnGroupsFragmentInteractionListener,LoginFragment.OnLoginFragmentInteractionListener,QuickMsgFragment.OnQuickMsgFragmentInteractionListener,DBManager.DBManagerInteractions,EditGroupFragment.OnEditGroupFragmentInteractionListener,GoogleMap.OnMapLongClickListener,GroupsRecyclerViewAdapter.OnGroupsAdapterInteractionListener,GoogleMap.OnMapLoadedCallback,OnMapReadyCallback, es.udc.tfg.pruebafinalfirebase.Core.mService.OnServiceInteractionListener,GoogleMap.OnMarkerDragListener, GoogleMap.OnMarkerClickListener {
 
     public static final String TAG = "MainActiv";
     public static final String NOTIF_FRAGMENT_TAG = "NOTIF_FRAGMENT_TAG";
@@ -133,6 +147,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     public static final String QUICKMSG_FRAGMENT_TAG = "QUICKMSG_FRAGMENT_TAG";
     public static final String LOGIN_FRAGMENT_TAG = "LOGIN_FRAGMENT_TAG";
     public static final String IP_FRAGMENT_TAG = "IP_FRAGMENT_TAG";
+    public static final String GROUP_CREATION_FRAGMENT_TAG = "GROUP_CREATION_FRAGMENT_TAG";
     public static final String NO_ACC = "NO_ACC";
     public static final int RC_SIGN_IN = 777;
     public static final int RC_PHONE_CONTACTS = 888;
@@ -141,6 +156,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     public static final int RC_CHECK_SETTINGS = 666;
     public static final int RC_CREATE_GROUP = 1;
     public static final int RC_ADD_MEMBER = 2;
+    public static final int RC_PICK_IMG = 33;
+    public static final int RC_PICK_IMG_2 = 34;
     public static final int NO_LEVEL = 9999;
     public static final int PERMISSION_REQUEST_READ_CONTACTS = 333;
     public static final int PERMISSION_REQUEST_LOCATION = 222;
@@ -169,26 +186,30 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     private FloatingActionButton locationFab,autoZoomFab;
     private DrawerLayout mDrawerLayout;
     private NavigationView navigationView;
-    private MenuItem menuItemShare,menuItemNotif,menuItemFilter,menuItemQuickmsg,menuItemQuickmap,menuItemIndoor;
+    private MenuItem menuItemShare,menuItemNotif,menuItemFilter,menuItemQuickmsg,menuItemQuickmap,menuItemIndoor,menuItemCreateGroup;
     private Button notifications;
     private Switch indoor_switch;
     private Menu menu;
     private Dialog pb;
     private AlertDialog noProfileDialog;
     private ActionBar ab;
+    private CollapsingToolbarLayout collapsingToolbarLayout;
+    private ImageView toolbarImg;
+    private RoundedImageView account_img;
 
     public FragmentManager fragmentManager;
     private LocationManager locationManager;
     public SharedPreferences pref;
     public SharedPreferences appPreferences;
 
-    private es.udc.tfg.pruebafinalfirebase.mService mService;
+    private es.udc.tfg.pruebafinalfirebase.Core.mService mService;
     private ServiceConnection mConnection;
     private boolean mBound;
     private CommunicationManager situmCommunicationManager;
     private String currentBuildingId = "";
     private Building currentBuilding = null;
     private Collection<Floor> currentFloors = null;
+    private ArrayList<String> selectedContacts;
 
     private GoogleApiClient mGoogleAuthApiClient;
     private GoogleMapOptions mapOptions;
@@ -249,7 +270,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
 
             @Override
             public void onServiceConnected(ComponentName className, IBinder service) {
-                es.udc.tfg.pruebafinalfirebase.mService.LocalBinder binder = (es.udc.tfg.pruebafinalfirebase.mService.LocalBinder) service;
+                es.udc.tfg.pruebafinalfirebase.Core.mService.LocalBinder binder = (es.udc.tfg.pruebafinalfirebase.Core.mService.LocalBinder) service;
                 mService = binder.getService();
                 mBound = true;
                 mService.registerClient(MainActivity.this);
@@ -270,6 +291,9 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         ab = getSupportActionBar();
+
+        /*AppBarLayout appBarLayout = (AppBarLayout) findViewById(R.id.appbarlayout);
+        appBarLayout.setExpanded(true);*/
 
         locationFab = (FloatingActionButton) findViewById(R.id.location_fab);
         autoZoomFab = (FloatingActionButton) findViewById(R.id.auto_view_fab);
@@ -382,7 +406,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
 
         /***********************  COMPROBAR ESTADO DE AUTENTICACIÓN **************************/
         if(!myServiceRunning) {
-            startService(new Intent(MainActivity.this, es.udc.tfg.pruebafinalfirebase.mService.class));
+            startService(new Intent(MainActivity.this, es.udc.tfg.pruebafinalfirebase.Core.mService.class));
             Log.d(TAG,"STARTING SERVICE");
         }
 
@@ -394,7 +418,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
     @Override
     protected void onStart(){
         super.onStart();
-        Intent intent = new Intent(this, es.udc.tfg.pruebafinalfirebase.mService.class);
+        Intent intent = new Intent(this, es.udc.tfg.pruebafinalfirebase.Core.mService.class);
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
         if(!dbManager.getDbManagerListenerContext().equals(TAG))
             dbManager.bindDBManager(MainActivity.this,DBManager.MODE_APPEND);
@@ -431,8 +455,33 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         if(dbManager.isAuthenticated()){
             TextView account_name = (TextView) navigationView.getHeaderView(0).findViewById(R.id.account_name);
             TextView account_phone = (TextView) navigationView.getHeaderView(0).findViewById(R.id.account_phone);
+            account_img = (RoundedImageView) navigationView.getHeaderView(0).findViewById(R.id.account_img);
             account_name.setText(dbManager.getNick());
             account_phone.setText(dbManager.getProfile().getPhoneNumber());
+            StorageReference ref = FirebaseStorage.getInstance().getReference().child(DBManager.STORAGE_USERS).child(dbManager.getId());
+
+            ref.getBytes(1024 * 1024).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+                @Override
+                public void onSuccess(byte[] bytes) {
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(bytes,0,bytes.length);
+                    account_img.setImageBitmap(bitmap);
+                }
+            }).addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    Log.d(TAG,"ERROR DESCARGA IMAGEN: "+e);
+                }
+            });
+            account_img.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent();
+                    intent.setType("image/*");
+                    intent.setAction(Intent.ACTION_GET_CONTENT);
+                    startActivityForResult(Intent.createChooser(intent,
+                            "Select Picture"), RC_PICK_IMG_2);
+                }
+            });
             setMapFragment();
         }else{
             setLoginFragment();
@@ -477,6 +526,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             menuItemQuickmap.setEnabled(false);
             menuItemQuickmap.setVisible(false);
             menuItemIndoor.setVisible(false);
+            menuItemCreateGroup.setVisible(false);
+            menuItemCreateGroup.setEnabled(false);
         }
         locationFab.setVisibility(View.VISIBLE);
         autoZoomFab.setVisibility(View.VISIBLE);
@@ -521,6 +572,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             menuItemQuickmap.setEnabled(false);
             menuItemQuickmap.setVisible(false);
             menuItemIndoor.setVisible(false);
+            menuItemCreateGroup.setVisible(false);
+            menuItemCreateGroup.setEnabled(false);
         }
         locationFab.setVisibility(View.GONE);
         autoZoomFab.setVisibility(View.GONE);
@@ -546,6 +599,45 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         pb.cancel();
     }
 
+    private void setGroupCreationFragment(){
+        currentBuildingId = "";
+        if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
+            cameraPosition = mGoogleMap.getCameraPosition();
+        }
+
+        if (menu != null){
+            menuItemShare.setEnabled(false);
+            menuItemNotif.setEnabled(false);
+            menuItemShare.setVisible(false);
+            menuItemNotif.setVisible(false);
+            menuItemFilter.setVisible(false);
+            menuItemQuickmsg.setEnabled(false);
+            menuItemQuickmsg.setVisible(false);
+            menuItemQuickmap.setEnabled(false);
+            menuItemQuickmap.setVisible(false);
+            menuItemIndoor.setVisible(false);
+            menuItemCreateGroup.setVisible(true);
+            menuItemCreateGroup.setEnabled(true);
+        }
+        locationFab.setVisibility(View.INVISIBLE);
+        autoZoomFab.setVisibility(View.INVISIBLE);
+
+        ab.setDefaultDisplayHomeAsUpEnabled(true);
+        ab.setHomeAsUpIndicator(R.drawable.ic_action_arrow_back);
+        ab.setTitle("Group creation");
+
+        GroupCreationFragment fragment = new GroupCreationFragment();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.replace(R.id.map_fragment_content, fragment, GROUP_CREATION_FRAGMENT_TAG);
+        fragmentTransaction.addToBackStack(null);
+        fragmentTransaction.commit();
+        fragmentManager.executePendingTransactions();
+
+        drawerFlag = GROUP_CREATION_FRAGMENT_TAG;
+
+        pb.cancel();
+    }
+
     private void setEditGroupFragment(String groupId){
         currentBuildingId = "";
         if(drawerFlag.equals(MAP_FRAGMENT_TAG) && mGoogleMap != null){
@@ -563,11 +655,13 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             menuItemQuickmap.setEnabled(false);
             menuItemQuickmap.setVisible(false);
             menuItemIndoor.setVisible(false);
+            menuItemCreateGroup.setVisible(false);
+            menuItemCreateGroup.setEnabled(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
 
-        ab.setDefaultDisplayHomeAsUpEnabled(true);
+        ab.setDisplayHomeAsUpEnabled(true);
         ab.setHomeAsUpIndicator(R.drawable.ic_action_arrow_back);
         ab.setTitle(dbManager.findGroupById(groupId).getName());
 
@@ -600,6 +694,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             menuItemQuickmap.setEnabled(true);
             menuItemQuickmap.setVisible(true);
             menuItemIndoor.setVisible(false);
+            menuItemCreateGroup.setVisible(false);
+            menuItemCreateGroup.setEnabled(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
@@ -637,6 +733,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             menuItemQuickmap.setEnabled(true);
             menuItemQuickmap.setVisible(true);
             menuItemIndoor.setVisible(false);
+            menuItemCreateGroup.setVisible(false);
+            menuItemCreateGroup.setEnabled(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
@@ -678,6 +776,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             menuItemQuickmap.setEnabled(false);
             menuItemQuickmap.setVisible(false);
             menuItemIndoor.setVisible(false);
+            menuItemCreateGroup.setVisible(false);
+            menuItemCreateGroup.setEnabled(false);
         }
         locationFab.setVisibility(View.INVISIBLE);
         autoZoomFab.setVisibility(View.INVISIBLE);
@@ -717,6 +817,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             menuItemQuickmap.setEnabled(false);
             menuItemQuickmap.setVisible(false);
             menuItemIndoor.setVisible(true);
+            menuItemCreateGroup.setVisible(false);
+            menuItemCreateGroup.setEnabled(false);
         }
         locationFab.setVisibility(View.GONE);
         autoZoomFab.setVisibility(View.GONE);
@@ -753,6 +855,10 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             transaction.remove(level);
         transaction.commit();
         fragmentManager.executePendingTransactions();
+        currentBuilding=null;
+        currentBuildingId="";
+        if(currentFloors!=null)
+            currentFloors.clear();
     }
 
     private void logout(){
@@ -839,8 +945,12 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         return NO_LEVEL;
     }
 
-    private void locationChanged(Location location, String userId,String nick, String groupId){
-        Log.d(TAG,"position: "+location.getLat()+","+location.getLng()+"         "+"   ACTIVE?"+location.isActive());
+    private void locationChanged(Location location, String userId, String nick, String groupId){
+
+        if(userId==null)
+            return;
+
+        Log.d(TAG,"POSICIÓN: "+userId+" "+nick+" "+groupId);
 
         int index = dbManager.findMarker(userId,groupId);
 
@@ -989,6 +1099,9 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         for(Marker m : ipMapMarkers){
             m.setVisible(ipState);
         }
+        for(MapMarker mm : DBManager.publicPoi){
+            mm.getMarker().setVisible(ipState);
+        }
     }
 
     /*************************** QUICK MESSAGE FRAGMENT METHODS ********************************/
@@ -1053,6 +1166,17 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         onBackPressed();
     }
 
+    /******** GROUP CRATION FRAGMENT *********/
+
+    @Override
+    public void pickImg() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent,
+                "Select Picture"), RC_PICK_IMG);
+    }
+
     /****************************** SERVICE METHODS *****************************************/
 
     @Override
@@ -1109,6 +1233,10 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                 fragmentManager.beginTransaction().remove(fragment).commit();
                 fragmentManager.executePendingTransactions();
             }
+            currentBuildingId = "";
+            if(currentFloors!=null)
+                currentFloors.clear();
+            currentBuilding = null;
         }
         locationChanged(location,dbManager.getId(),"","");
     }
@@ -1235,8 +1363,10 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         if(pref.getBoolean("locationEnabled",false))
             locationFab.performClick();
 
-        if(pref.getBoolean("IndoorLocation",false))
+        if(pref.getBoolean("IndoorLocation",false)) {
+            dbManager.removePublicIp(account.getUserId());
             mService.setIndoorState(true);
+        }
     }
 
     @Override
@@ -1271,7 +1401,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         Log.d(TAG,"DBMANAGER: signed in:  "+dbManager.isAuthenticated());
         pref.edit().putBoolean("profileCreated",true);
         if(!mBound){
-            Intent intent = new Intent(this, es.udc.tfg.pruebafinalfirebase.mService.class);
+            Intent intent = new Intent(this, es.udc.tfg.pruebafinalfirebase.Core.mService.class);
             bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
         }
         cameraPosition = new CameraPosition(new LatLng(lastLocation.getLat(),lastLocation.getLng()),10,0,0);
@@ -1519,6 +1649,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                             if (!phoneNumber.equals("")&&!nick.equals("")){
                                 dbManager.createProfile(phoneNumber,nick);
                             } else {
+                                //dbManager.createProfile(phoneNumber,nick);
                                 Toast.makeText(MainActivity.this,"Nick or phone number can't be empty",Toast.LENGTH_SHORT).show();
                             }
                         }
@@ -1571,6 +1702,42 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                 }
             }
         }
+    }
+
+    @Override
+    public void publicInterestPointAdded(InterestPoint ip) {
+        MarkerOptions options = new MarkerOptions()
+                .position(new LatLng(ip.getLat(), ip.getLng()))
+                .title(ip.getName()+" (PUBLIC)")
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_pushpin_trimed2))
+                .draggable(true)
+                .anchor((float)0.3,1)
+                .visible(ipState);
+
+        MapMarker mm = new MapMarker(options,ip.getUserId(),ip.getIpId(),MapMarker.PUBLIC_INTEREST_POINT,true,null);
+        Marker m = mGoogleMap.addMarker(options);
+        m.setTag(ip);
+        mm.setMarker(m);
+        DBManager.publicPoi.add(mm);
+    }
+
+    @Override
+    public void publicInterestPointRemoved(InterestPoint ip) {
+        for(MapMarker mm : DBManager.publicPoi){
+            if(mm.getGroupId().equals(ip.getIpId()) && mm.getId().equals(ip.getUserId())){
+                Marker auxmarker = mm.getMarker();
+                DBManager.publicPoi.remove(mm);
+                auxmarker.remove();
+            }
+        }
+    }
+
+    @Override
+    public void removePublicPoi() {
+        for(MapMarker mm : DBManager.publicPoi){
+            mm.getMarker().remove();
+        }
+        DBManager.publicPoi.clear();
     }
 
     @Override
@@ -1706,6 +1873,15 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                 else if (m.getType() == MapMarker.DESTINATION_MARKER)
                     marker.setTag(new DestinationPoint(options.getPosition().latitude,options.getPosition().longitude,options.getTitle(),m.getId(),m.getDpHour()));
 
+                m.setMarker(marker);
+            }
+        }
+
+        for(MapMarker m: DBManager.publicPoi){
+            if(m!=null){
+                MarkerOptions options = m.getMarkerOptions();
+                Marker marker = mGoogleMap.addMarker(options);
+                marker.setTag(m.getMarker().getTag());
                 m.setMarker(marker);
             }
         }
@@ -2061,6 +2237,8 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                 Toast.makeText(MainActivity.this,"Press back again to exit",Toast.LENGTH_LONG).show();
             }
         } else {
+            if(selectedContacts!=null)
+                selectedContacts.clear();
             super.onBackPressed();
 
             Fragment frag = fragmentManager.findFragmentById(R.id.map_fragment_content);
@@ -2104,9 +2282,9 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             case RC_EMAIL_CONTACTS+RC_CREATE_GROUP:
             case RC_KEY_CONTACTS+RC_CREATE_GROUP:
                 if(resultCode==RESULT_OK) {
-                    final ArrayList<String> selectedContacts = data.getStringArrayListExtra("selectedContacts");
-
-                    final EditText et = (EditText) new EditText(MainActivity.this);
+                    selectedContacts = data.getStringArrayListExtra("selectedContacts");
+                    setGroupCreationFragment();
+                    /*final EditText et = (EditText) new EditText(MainActivity.this);
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("Group name")
                             .setMessage("Enter a name for your group")
@@ -2129,7 +2307,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                                     dialog.cancel();
                                 }
                             })
-                            .show();
+                            .show();*/
 
                 }
 
@@ -2156,6 +2334,24 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                         break;
                     default:
                         break;
+                }
+                break;
+            case RC_PICK_IMG:
+                if (resultCode == RESULT_OK) {
+                    Uri selectedImageUri = data.getData();
+                    Fragment fragment = fragmentManager.findFragmentByTag(GROUP_CREATION_FRAGMENT_TAG);
+                    Fragment fragment1 = fragmentManager.findFragmentByTag(QUICKMSG_FRAGMENT_TAG);
+                    if(fragment!=null)
+                        ((GroupCreationFragment) fragment).setImg(selectedImageUri);
+                    if(fragment1!=null)
+                        ((QuickMsgFragment) fragment1).addImg(selectedImageUri);
+                }
+                break;
+            case RC_PICK_IMG_2:
+                if (resultCode == RESULT_OK) {
+                    Uri selectedImageUri = data.getData();
+                    account_img.setImageURI(selectedImageUri);
+                    dbManager.changeAccountImg(selectedImageUri);
                 }
                 break;
         }
@@ -2200,9 +2396,11 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
         menuItemFilter = menu.findItem(R.id.action_filter);
         menuItemQuickmsg = menu.findItem(R.id.action_quickmsg);
         menuItemQuickmap = menu.findItem(R.id.action_quickMap);
+        menuItemCreateGroup = menu.findItem(R.id.action_create_group);
         menuItemQuickmap.setVisible(false);
         menuItemNotif.setVisible(false);
         menuItemShare.setVisible(false);
+        menuItemCreateGroup.setVisible(false);
 
         /*if(dbManager.isAuthenticated())
 
@@ -2282,7 +2480,7 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
                 return true;
             case android.R.id.home:
                 Fragment fragment1 = fragmentManager.findFragmentById(R.id.map_fragment_content);
-                if(fragment1 instanceof EditGroupFragment || fragment1 instanceof MessagesFragment || fragment1 instanceof InterestPointFragment)
+                if(fragment1 instanceof EditGroupFragment || fragment1 instanceof MessagesFragment || fragment1 instanceof InterestPointFragment || fragment1 instanceof GroupCreationFragment)
                     onBackPressed();
                 else
                     mDrawerLayout.openDrawer(GravityCompat.START);
@@ -2342,6 +2540,18 @@ public class MainActivity extends AppCompatActivity implements levelPickerRecycl
             case R.id.action_quickMap:
                 fragmentManager.popBackStack();
                 setMapFragment();
+                return true;
+            case R.id.action_create_group:
+                GroupCreationFragment fragment = (GroupCreationFragment) fragmentManager.findFragmentByTag(GROUP_CREATION_FRAGMENT_TAG);
+                if (fragment!=null){
+                    String name = fragment.getName();
+                    if(name.equals(""))
+                        Snackbar.make(getCurrentFocus(),"Name can't be empty",Snackbar.LENGTH_SHORT).show();
+                    else{
+                        dbManager.createGroup(name,selectedContacts,fragment.getInviteMode(),fragment.getImgUri());
+                        onBackPressed();
+                    }
+                }
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

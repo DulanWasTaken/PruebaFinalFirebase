@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Map;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
@@ -8,11 +8,11 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import es.udc.tfg.pruebafinalfirebase.Group.GroupsRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
+import es.udc.tfg.pruebafinalfirebase.R;
+import es.udc.tfg.pruebafinalfirebase.Utils.Utils;
 
 /**
  * Created by Usuario on 04/07/2017.
@@ -64,6 +64,10 @@ public class infoWindowRecyclerViewAdapter extends RecyclerView.Adapter<infoWind
         if(message.getType()==Message.TYPE_IP) {
             holder.attach.setVisibility(View.VISIBLE);
             holder.attach.setImageResource(R.drawable.ic_infowindow_chat_ip);
+        }
+        if(message.getType()==Message.TYPE_IMG) {
+            holder.attach.setVisibility(View.VISIBLE);
+            holder.attach.setImageResource(R.drawable.ic_image);
         }
         holder.msg.setText(message.getMsg());
         holder.time.setText(Utils.longToShortDate(message.getTime()));

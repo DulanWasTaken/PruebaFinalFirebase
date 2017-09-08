@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Map;
 
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -14,6 +14,7 @@ import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 public class MapMarker {
     public final static int LOCATION_MARKER = 1;
     public final static int DESTINATION_MARKER = 2;
+    public final static int PUBLIC_INTEREST_POINT = 3;
 
     Marker marker;
     MarkerOptions markerOptions;

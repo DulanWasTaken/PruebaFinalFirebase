@@ -4,7 +4,6 @@ package es.udc.tfg.pruebafinalfirebase.Group;
  * Created by Usuario on 06/07/2017.
  */
 
-import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -15,9 +14,8 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
-import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Core.DBManager;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
-import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
 

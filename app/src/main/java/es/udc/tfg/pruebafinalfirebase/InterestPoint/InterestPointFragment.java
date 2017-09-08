@@ -15,7 +15,7 @@ import android.widget.TextView;
 import java.util.Collection;
 import java.util.HashMap;
 
-import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Core.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
 
 

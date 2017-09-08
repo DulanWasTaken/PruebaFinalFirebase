@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Map;
 
 /**
  * Created by Usuario on 18/12/2016.

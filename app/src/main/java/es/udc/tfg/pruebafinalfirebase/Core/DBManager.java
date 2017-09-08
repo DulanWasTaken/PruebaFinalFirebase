@@ -1,7 +1,8 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Core;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
@@ -23,6 +24,8 @@ import com.google.firebase.database.MutableData;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -32,9 +35,11 @@ import es.udc.tfg.pruebafinalfirebase.Group.GroupMember;
 import es.udc.tfg.pruebafinalfirebase.Indoor.SitumAccount;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
-import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
+import es.udc.tfg.pruebafinalfirebase.Map.Location;
+import es.udc.tfg.pruebafinalfirebase.Map.MapMarker;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
+import es.udc.tfg.pruebafinalfirebase.Utils.Utils;
 
 /**
  * Created by Usuario on 22/02/2017.
@@ -53,6 +58,9 @@ public class DBManager {
     private static final String DB_REQUESTS_REFERENCE = "requests";
     private static final String DB_PUBLICID_REFERENCE = "publicIds";
     private static final String DB_SITUMACC_REFERENCE = "situmAccs";
+    public static final String STORAGE_GROUPS = "groups";
+    public static final String STORAGE_USERS = "users";
+    public static final String STORAGE_MESSAGES = "messages";
     public static final int MODE_CREATE = 0;
     public static final int MODE_APPEND = 1;
     private static final String TAG = "DBManager";
@@ -60,6 +68,7 @@ public class DBManager {
     private static DBManager ourInstance = new DBManager();
 
     private DatabaseReference DBroot = FirebaseDatabase.getInstance().getReference();
+    private StorageReference firebaseStorage = FirebaseStorage.getInstance().getReference();
     private DatabaseReference mProfileReference;
     private FirebaseAuth DBauth = FirebaseAuth.getInstance();
     private DBManagerInteractions mListener;
@@ -73,6 +82,7 @@ public class DBManager {
     private ChildEventListener groupMsgListener;
     private ValueEventListener groupRequestListener;
     private ChildEventListener groupDestinationsListener;
+    private ChildEventListener publicIdListener;
     private FirebaseUser mUser;
     private User mProfile;
 
@@ -80,6 +90,7 @@ public class DBManager {
     public static ArrayList<Group> mGroupsRequest = new ArrayList<>();
     public static LinkedHashMap<Group,Boolean> mGroups = new LinkedHashMap<>();
     public static ArrayList<MapMarker> mapMarkers = new ArrayList<>();
+    public static ArrayList<MapMarker> publicPoi = new ArrayList<>();
     //public static ArrayList<InterestPoint> mInterestPoints = new ArrayList<>();
     public Boolean authenticated = null;
     public Boolean listenersEnabled = false;
@@ -303,9 +314,10 @@ public class DBManager {
                         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                             if(dataSnapshot.exists() && dataSnapshot.getKey()!=lastMsgKey){
                                 Message msg = dataSnapshot.getValue(Message.class);
+                                String key = dataSnapshot.getKey();
                                 if (msg!=null && mListener!=null){
-                                    Log.d(TAG,"UN MSG RECIBIDO: "+msg.getMsg());
-                                    lastMsgKey = dataSnapshot.getKey();
+                                    msg.setMsgId(key);
+                                    lastMsgKey = key;
 
                                     if(msg.getTime()>lastMsgTime){
                                         lastMsgTime = msg.getTime();
@@ -774,15 +786,25 @@ public class DBManager {
         }
     }
 
+    public void changeAccountImg(Uri uri){
+        if(uri!=null) {
+            firebaseStorage.child(STORAGE_USERS).child(mUser.getUid()).delete();
+            firebaseStorage.child(STORAGE_USERS).child(mUser.getUid()).putFile(uri);
+        }
+    }
+
     /*********************************** GROUPS METHODS ******************************************/
 
-    public void createGroup(String name, ArrayList<String> contacts){
+    public void createGroup(String name, ArrayList<String> contacts, boolean freeInvitation, Uri imgUri){
         ArrayList<GroupMember> members = new ArrayList<>();
         ArrayList<String> admins = new ArrayList<>();
         members.add(new GroupMember(Group.GROUP_STATE_ACTIVE,mUser.getUid(),mProfile.getNick()));
         admins.add(mUser.getUid());
         final String groupId = DBroot.child(DB_GROUPS_REFERENCE).push().getKey();
-        DBroot.child(DB_GROUPS_REFERENCE).child(groupId).setValue(new Group(name,groupId,members,admins,null));
+        DBroot.child(DB_GROUPS_REFERENCE).child(groupId).setValue(new Group(name,groupId,members,admins,null,freeInvitation));
+
+        if(imgUri!=null)
+            firebaseStorage.child(STORAGE_GROUPS).child(groupId).putFile(imgUri);
 
         ArrayList<String> mGroups = mProfile.getGroupsId();
         if(mGroups == null)
@@ -899,8 +921,10 @@ public class DBManager {
             public void onDataChange(DataSnapshot dataSnapshot) {
                 for(DataSnapshot children : dataSnapshot.getChildren()){
                     Message msg = children.getValue(Message.class);
-                    if(msg!=null)
+                    if(msg!=null) {
+                        msg.setMsgId(children.getKey());
                         result.add(msg);
+                    }
                 }
                 if(mListener!=null){
                     mListener.initMsgList(groupId,result);
@@ -914,13 +938,17 @@ public class DBManager {
         });
     }
 
-    public void sendMsg(String msg, String groupId,int type,InterestPoint interestPoint){
-
-        if(interestPoint == null)
-            DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg,type));
-        else
-            DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1,mUser.getUid(),mProfile.getNick()),msg,interestPoint.getIpId(),interestPoint.getUserId(),interestPoint.getLat(),interestPoint.getLng(),type));
-
+    public void sendMsg(String msg, String groupId,int type,Object attach){
+        Log.d(TAG, "SEND MSG TYPE: "+type+"      "+attach.toString());
+        if(type == Message.TYPE_IP) {
+            InterestPoint interestPoint = (InterestPoint) attach;
+            DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().setValue(new Message(new GroupMember(1, mUser.getUid(), mProfile.getNick()), msg, interestPoint.getIpId(), interestPoint.getUserId(), interestPoint.getLat(), interestPoint.getLng(), type));
+        }else {
+            String id = DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).push().getKey();
+            if(type == Message.TYPE_IMG)
+                firebaseStorage.child(STORAGE_MESSAGES).child(id).putFile((Uri) attach);
+            DBroot.child(DB_MESSAGES_REFERENCE).child(groupId).child(DB_MESSAGES_OLDER_REFERENCE).child(id).setValue(new Message(new GroupMember(1, mUser.getUid(), mProfile.getNick()), msg, type));
+        }
     }
 
     public void setFilter(Group group, Boolean filter){
@@ -1148,6 +1176,52 @@ public class DBManager {
         });
     }
 
+    public void getPublicIp(final String userId){
+        publicIdListener = new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                InterestPoint ip = null;
+                if(dataSnapshot.exists())
+                    ip = dataSnapshot.getValue(InterestPoint.class);
+                if(ip!=null){
+                    mListener.publicInterestPointAdded(ip);
+                }
+
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                InterestPoint ip = null;
+                if(dataSnapshot.exists())
+                    ip = dataSnapshot.getValue(InterestPoint.class);
+                if(ip!=null){
+                    mListener.publicInterestPointRemoved(ip);
+                }
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                mListener.removePublicPoi();
+            }
+        };
+        DBroot.child(DB_USER_REFERENCE).child(userId).child(DB_USER_INTERESTPOINTS_REF).addChildEventListener(publicIdListener);
+    }
+
+    public void removePublicIp(String userId){
+        DBroot.child(DB_USER_REFERENCE).child(userId).child(DB_USER_INTERESTPOINTS_REF).removeEventListener(publicIdListener);
+    }
+
     /*********************************** COMMUNICATION INTERFACE ******************************************/
 
     public interface DBManagerInteractions{
@@ -1165,6 +1239,9 @@ public class DBManager {
         void initInterestPoint(InterestPoint interestPoint,String userId, String ipId);
         void interestPointAdded(InterestPoint ip);
         void interestPointRemoved(InterestPoint ip);
+        void publicInterestPointAdded(InterestPoint ip);
+        void publicInterestPointRemoved(InterestPoint ip);
+        void removePublicPoi();
         void destinationPointAdded(DestinationPoint p, String groupId);
         void destinationPointChanged(DestinationPoint p, String groupId);
         void destinationPointRemoved(DestinationPoint p, String groupId);

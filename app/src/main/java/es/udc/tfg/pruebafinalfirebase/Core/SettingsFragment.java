@@ -1,8 +1,11 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Core;
 
 import android.os.Bundle;
 import android.support.v7.preference.Preference;
 import android.support.v7.preference.PreferenceFragmentCompat;
+
+import es.udc.tfg.pruebafinalfirebase.Core.DBManager;
+import es.udc.tfg.pruebafinalfirebase.R;
 
 /**
  * Created by Usuario on 11/03/2017.

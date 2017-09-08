@@ -11,9 +11,8 @@ import android.widget.ImageButton;
 
 import java.util.ArrayList;
 
-import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Core.DBManager;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
-import es.udc.tfg.pruebafinalfirebase.Group.GroupsRecyclerViewAdapter;
 import es.udc.tfg.pruebafinalfirebase.R;
 
 /**

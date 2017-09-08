@@ -1,9 +1,10 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Core;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
+import es.udc.tfg.pruebafinalfirebase.Map.Location;
 
 /**
  * Created by Usuario on 18/12/2016.

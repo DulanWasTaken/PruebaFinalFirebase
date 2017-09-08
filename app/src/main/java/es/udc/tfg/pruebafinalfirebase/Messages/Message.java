@@ -11,6 +11,7 @@ import es.udc.tfg.pruebafinalfirebase.Group.GroupMember;
 public class Message {
     public static final int TYPE_TEXT = 1;
     public static final int TYPE_IP = 2;
+    public static final int TYPE_IMG = 3;
 
     long time;
     GroupMember sender;
@@ -19,6 +20,7 @@ public class Message {
     String userIp;
     double ipLat,ipLng;
     int type;
+    String msgId;
 
     public Message(){
     }
@@ -79,5 +81,13 @@ public class Message {
 
     public void setIpLng(double ipLng) {
         this.ipLng = ipLng;
+    }
+
+    public String getMsgId() {
+        return msgId;
+    }
+
+    public void setMsgId(String msgId) {
+        this.msgId = msgId;
     }
 }

@@ -1,8 +1,10 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Core;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+
+import es.udc.tfg.pruebafinalfirebase.Core.mService;
 
 public class MyReceiver extends BroadcastReceiver {
 

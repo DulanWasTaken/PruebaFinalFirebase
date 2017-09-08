@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,6 +20,7 @@ public class LevelPickerFragment extends Fragment {
     private Context context;
     private RecyclerView mRecyclerView;
     private levelPickerRecyclerViewAdapter adapter;
+    private String locationFloor = "";
 
 
     public LevelPickerFragment() {
@@ -52,12 +54,19 @@ public class LevelPickerFragment extends Fragment {
     }
 
     public void initFloorList(ArrayList<Floor> floors, String currentFloor){
-        adapter = new levelPickerRecyclerViewAdapter(floors,currentFloor,"");
+        adapter = new levelPickerRecyclerViewAdapter(floors,currentFloor,locationFloor);
         mRecyclerView.setAdapter(adapter);
     }
 
     public void setLevelLocation(String id){
-        adapter = new levelPickerRecyclerViewAdapter(adapter.getmDataset(),adapter.getCurrentFloor(),id);
-        mRecyclerView.setAdapter(adapter);
+        /*adapter = new levelPickerRecyclerViewAdapter(adapter.getmDataset(),adapter.getCurrentFloor(),id);
+        mRecyclerView.setAdapter(adapter);*/
+        Log.d("TEST LEVEL PICKER 2", "ID RECIBIDO: "+id+" ID ACTUAL "+locationFloor);
+        if(!id.equals(locationFloor)){
+            locationFloor = id;
+            adapter = new levelPickerRecyclerViewAdapter(adapter.getmDataset(),adapter.getCurrentFloor(),locationFloor);
+            mRecyclerView.setAdapter(adapter);
+            Log.d("TEST LEVEL PICKER", "cambio de piso: "+id);
+        }
     }
 }

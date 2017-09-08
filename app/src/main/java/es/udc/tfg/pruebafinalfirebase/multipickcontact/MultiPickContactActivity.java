@@ -28,12 +28,10 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 
-import es.udc.tfg.pruebafinalfirebase.MainActivity;
+import es.udc.tfg.pruebafinalfirebase.Core.MainActivity;
 import es.udc.tfg.pruebafinalfirebase.R;
-import es.udc.tfg.pruebafinalfirebase.Utils;
+import es.udc.tfg.pruebafinalfirebase.Utils.Utils;
 
 public class MultiPickContactActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 

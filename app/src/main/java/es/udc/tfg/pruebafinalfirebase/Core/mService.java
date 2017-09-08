@@ -1,4 +1,4 @@
-package es.udc.tfg.pruebafinalfirebase;
+package es.udc.tfg.pruebafinalfirebase.Core;
 
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -16,12 +16,10 @@ import android.os.IBinder;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -42,23 +40,22 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
-import java.util.Collection;
 
 import es.situm.sdk.SitumSdk;
 import es.situm.sdk.communication.CommunicationManager;
 import es.situm.sdk.error.Error;
 import es.situm.sdk.location.LocationManager;
 import es.situm.sdk.location.LocationStatus;
-import es.situm.sdk.model.cartography.Building;
-import es.situm.sdk.model.cartography.Floor;
 import es.situm.sdk.utils.Handler;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.Indoor.SitumAccount;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.InterestPoint;
-import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
+import es.udc.tfg.pruebafinalfirebase.Map.MapMarker;
 import es.udc.tfg.pruebafinalfirebase.Messages.Message;
 import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
+import es.udc.tfg.pruebafinalfirebase.R;
+import es.udc.tfg.pruebafinalfirebase.Utils.Utils;
 
 public class mService extends Service implements DBManager.DBManagerInteractions,LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
 
@@ -78,6 +75,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     private OnServiceInteractionListener mListener;
     private SharedPreferences pref;
     private long lastTimeForeground = 0;
+    private long lastTimeLocation = 0;
     private NotificationManager mNotifyMgr;
     private SharedPreferences appPreferences;
     private GoogleApiClient mGoogleLocateApiClient;
@@ -129,13 +127,18 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         indoorLocationListener = new es.situm.sdk.location.LocationListener() {
             @Override
             public void onLocationChanged(@NonNull es.situm.sdk.model.location.Location location) {
-                es.udc.tfg.pruebafinalfirebase.Location mLocation;
+                if(System.currentTimeMillis()-lastTimeLocation<3000)
+                    return;
+                es.udc.tfg.pruebafinalfirebase.Map.Location mLocation;
+                lastTimeLocation = System.currentTimeMillis();
                 //Toast.makeText(mService.this,"Indoor?"+location.isIndoor()+" bearing:"+location.getBearing().toString(),Toast.LENGTH_SHORT).show();
                 if(location.isIndoor()) {
-                    mLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getCoordinate().getLatitude(), location.getCoordinate().getLongitude(), location.getAccuracy(), (float) location.getBearing().degrees(), true, true, location.getBuildingIdentifier(), location.getFloorIdentifier());
+                    mLocation = new es.udc.tfg.pruebafinalfirebase.Map.Location(location.getCoordinate().getLatitude(), location.getCoordinate().getLongitude(), location.getAccuracy(), (float) location.getBearing().degrees(), true, true, location.getBuildingIdentifier(), location.getFloorIdentifier());
 
                 }else
-                    mLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getCoordinate().getLatitude(),location.getCoordinate().getLongitude(),location.getAccuracy(),(float)location.getBearing().degrees(),true,false);
+                    mLocation = new es.udc.tfg.pruebafinalfirebase.Map.Location(location.getCoordinate().getLatitude(),location.getCoordinate().getLongitude(),location.getAccuracy(),(float)location.getBearing().degrees(),true,false);
+
+                dbManager.setLocation(mLocation);
 
                 if(bound)
                     mListener.onMyLocationChanged(mLocation);
@@ -324,7 +327,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
         editor.commit();
         dbManager.disableMyLocation();
         if(mListener!=null)
-            mListener.onMyLocationChanged(new es.udc.tfg.pruebafinalfirebase.Location(0,0,0,0,false,false));
+            mListener.onMyLocationChanged(new es.udc.tfg.pruebafinalfirebase.Map.Location(0,0,0,0,false,false));
         return false;
     }
 
@@ -345,6 +348,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
             public void onSuccess(Object o) {
                 if(bound)
                     mListener.indoorEnabled(account);
+                dbManager.getPublicIp(account.getUserId());
             }
 
             @Override
@@ -355,7 +359,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     }
 
     public interface OnServiceInteractionListener{
-        public void onMyLocationChanged(es.udc.tfg.pruebafinalfirebase.Location location);
+        public void onMyLocationChanged(es.udc.tfg.pruebafinalfirebase.Map.Location location);
         public void startResolution(Status status);
         void indoorEnabled(SitumAccount acc);
         void indoorFailed(Error error);
@@ -386,7 +390,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     @Override
     public void onLocationChanged(Location location) {
         Log.d(TAG,"gps changing position...  bearing = "+location.getBearing());
-        es.udc.tfg.pruebafinalfirebase.Location myLocation = new es.udc.tfg.pruebafinalfirebase.Location(location.getLatitude(),location.getLongitude(),location.getAccuracy(),location.getBearing(),true,false);
+        es.udc.tfg.pruebafinalfirebase.Map.Location myLocation = new es.udc.tfg.pruebafinalfirebase.Map.Location(location.getLatitude(),location.getLongitude(),location.getAccuracy(),location.getBearing(),true,false);
         dbManager.setLocation(myLocation);
         if(bound)
             mListener.onMyLocationChanged(myLocation);
@@ -397,7 +401,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     /*************************** DB MANAGER METHODS *********************************/
 
     @Override
-    public void signedIn(es.udc.tfg.pruebafinalfirebase.Location lastLocation) {
+    public void signedIn(es.udc.tfg.pruebafinalfirebase.Map.Location lastLocation) {
 
     }
 
@@ -417,7 +421,7 @@ public class mService extends Service implements DBManager.DBManagerInteractions
     }
 
     @Override
-    public void locationReceived(String userId,String nick, String groupId, es.udc.tfg.pruebafinalfirebase.Location location) {
+    public void locationReceived(String userId,String nick, String groupId, es.udc.tfg.pruebafinalfirebase.Map.Location location) {
         int index = dbManager.findMarker(userId,groupId);
 
         final MarkerOptions options;
@@ -573,6 +577,21 @@ public class mService extends Service implements DBManager.DBManagerInteractions
 
     @Override
     public void initSitumAccountList(ArrayList<SitumAccount> situmAccounts) {
+
+    }
+
+    @Override
+    public void publicInterestPointAdded(InterestPoint ip) {
+
+    }
+
+    @Override
+    public void publicInterestPointRemoved(InterestPoint ip) {
+
+    }
+
+    @Override
+    public void removePublicPoi() {
 
     }
 }

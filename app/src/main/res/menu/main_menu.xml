@@ -38,4 +38,10 @@
         android:title="Quick Map"
         app:showAsAction="always"
         android:enabled="true"/>
+
+    <item
+        android:id="@+id/action_create_group"
+        android:icon="@drawable/ic_content_forward"
+        android:title="Save"
+        app:showAsAction="always"/>
 </menu>

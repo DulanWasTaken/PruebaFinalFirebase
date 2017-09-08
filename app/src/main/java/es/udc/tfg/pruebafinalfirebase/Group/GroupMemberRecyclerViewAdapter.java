@@ -5,6 +5,8 @@ package es.udc.tfg.pruebafinalfirebase.Group;
  */
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -13,9 +15,13 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+
 import java.util.ArrayList;
 
-import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Core.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
 
@@ -78,7 +84,7 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
 
     // Replace the contents of a view (invoked by the layout manager)
     @Override
-    public void onBindViewHolder(GroupMemberRecyclerViewAdapter.ViewHolder holder, final int position) {
+    public void onBindViewHolder(final GroupMemberRecyclerViewAdapter.ViewHolder holder, final int position) {
         GroupMember member = null;
         if(position<mDataset.size())
             member = mDataset.get(position);
@@ -113,6 +119,17 @@ public class GroupMemberRecyclerViewAdapter extends RecyclerView.Adapter<GroupMe
             }
         });
         holder.photo.setImageDrawable(ic_contact);
+        if(position<mDataset.size()){
+            StorageReference ref = FirebaseStorage.getInstance().getReference().child("users").child(mDataset.get(position).getMemberId());
+            ref.getBytes(1024 * 1024).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+                @Override
+                public void onSuccess(byte[] bytes) {
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(bytes,0,bytes.length);
+                    holder.photo.setImageBitmap(Bitmap.createScaledBitmap(bitmap, holder.photo.getWidth(),
+                            holder.photo.getHeight(), false));
+                }
+            });
+        }
     }
 
     // Return the size of your dataset (invoked by the layout manager)

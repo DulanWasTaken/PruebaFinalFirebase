@@ -1,38 +1,30 @@
 package es.udc.tfg.pruebafinalfirebase.Group;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.MutableData;
-import com.google.firebase.database.Transaction;
-import com.google.firebase.database.ValueEventListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.concurrent.CopyOnWriteArrayList;
 
-import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Core.DBManager;
 import es.udc.tfg.pruebafinalfirebase.InterestPoint.DestinationPoint;
-import es.udc.tfg.pruebafinalfirebase.InterestPoint.Point;
 import es.udc.tfg.pruebafinalfirebase.R;
-import es.udc.tfg.pruebafinalfirebase.Notifications.Request;
-import es.udc.tfg.pruebafinalfirebase.User;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.SimpleDividerItemDecoration;
 
 
@@ -49,6 +41,8 @@ public class EditGroupFragment extends Fragment {
     private EditText editGroupName;
     private TextView destTv;
     private RecyclerView groupMembersRecyclerView,destinationsRecyclerView;
+    private ImageView imageView;
+    private CheckBox checkBox;
 
     private OnEditGroupFragmentInteractionListener mListener;
 
@@ -85,6 +79,8 @@ public class EditGroupFragment extends Fragment {
         groupMembersRecyclerView = (RecyclerView) v.findViewById(R.id.group_members_recycler_view);
         destinationsRecyclerView = (RecyclerView) v.findViewById(R.id.destinations_recycler_view);
         destTv = (TextView) v.findViewById(R.id.destinations_text_view);
+        imageView = (ImageView) v.findViewById(R.id.image_group);
+        checkBox = (CheckBox) v.findViewById(R.id.allow_invitations_checkbox);
 
         return v;
     }
@@ -104,13 +100,24 @@ public class EditGroupFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-
+        StorageReference ref = FirebaseStorage.getInstance().getReference().child("groups").child(groupId);
+        ref.getBytes(1024 * 1024).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+            @Override
+            public void onSuccess(byte[] bytes) {
+                Bitmap bitmap = BitmapFactory.decodeByteArray(bytes,0,bytes.length);
+                imageView.setImageBitmap(bitmap);
+            }
+        });
         setUI();
     }
 
     public void setUI(){
         group = dbManager.findGroupById(groupId);
         editGroupName.setText(group.getName());
+        if(group.getAdmins().contains(dbManager.getId())){
+            checkBox.setVisibility(View.VISIBLE);
+            checkBox.setChecked(group.isAllowInvitations());
+        }
         final RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(context);
         groupMembersRecyclerView.setLayoutManager(mLayoutManager);
         groupMembersRecyclerView.addItemDecoration(new SimpleDividerItemDecoration(context));
@@ -133,6 +140,7 @@ public class EditGroupFragment extends Fragment {
                 if(editGroupName.getText()!=null){
                     String name = editGroupName.getText().toString();
                     group.setName(name);
+                    group.setAllowInvitations(checkBox.isChecked());
                     dbManager.updateGroup(group);
                     mListener.saveChanges();
                 }
@@ -140,7 +148,7 @@ public class EditGroupFragment extends Fragment {
             }
         });
 
-        if(!group.getAdmins().contains(dbManager.getId())){
+        if(!group.getAdmins().contains(dbManager.getId()) && !group.isAllowInvitations()){
             addMemberButton.setVisibility(View.GONE);
         } else if (group.getAdmins().size()==1) {
             exitGroupButton.setText("Delete Group");

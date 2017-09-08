@@ -1,9 +1,10 @@
 package es.udc.tfg.pruebafinalfirebase.Group;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,12 +12,16 @@ import android.widget.ImageButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Core.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
-import es.udc.tfg.pruebafinalfirebase.Utils;
+import es.udc.tfg.pruebafinalfirebase.Utils.Utils;
 import es.udc.tfg.pruebafinalfirebase.multipickcontact.RoundedImageView;
 
 /**
@@ -72,7 +77,7 @@ public class GroupsRecyclerViewAdapter extends RecyclerView.Adapter<GroupsRecycl
     }
 
     @Override
-    public void onBindViewHolder(GroupsRecyclerViewAdapter.ViewHolder holder, final int position) {
+    public void onBindViewHolder(final GroupsRecyclerViewAdapter.ViewHolder holder, final int position) {
         ArrayList<String> members = new ArrayList<>();
         ArrayList<GroupMember> aux = mDataset.get(position).getMembersId();
         if(aux!=null){
@@ -89,6 +94,18 @@ public class GroupsRecyclerViewAdapter extends RecyclerView.Adapter<GroupsRecycl
         holder.data.setText(Utils.listToString(members));
         holder.time.setText(Utils.longToDate(mDataset.get(position).getTime()));
         holder.img.setImageDrawable(ic_group);
+
+        StorageReference ref = FirebaseStorage.getInstance().getReference().child("groups").child(mDataset.get(position).getId());
+        ref.getBytes(1024 * 1024).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+            @Override
+            public void onSuccess(byte[] bytes) {
+                Bitmap bitmap = BitmapFactory.decodeByteArray(bytes,0,bytes.length);
+                holder.img.setImageBitmap(Bitmap.createScaledBitmap(bitmap, holder.img.getWidth(),
+                        holder.img.getHeight(), false));
+            }
+        });
+
+
         holder.row.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

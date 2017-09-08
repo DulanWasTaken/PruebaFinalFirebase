@@ -30,7 +30,7 @@
             android:value="@integer/google_play_services_version" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".Core.MainActivity"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -40,7 +40,7 @@
         </activity>
 
         <service
-            android:name=".mService"
+            android:name=".Core.mService"
             android:enabled="true"
             android:exported="false"
             android:launchMode="singleTop" />
@@ -48,7 +48,7 @@
         <activity
             android:name=".multipickcontact.MultiPickContactActivity"
             android:label="@string/title_activity_multi_pick_contact"
-            android:parentActivityName=".MainActivity"
+            android:parentActivityName=".Core.MainActivity"
             android:screenOrientation="portrait">
             <meta-data
                 android:name="android.app.searchable"
@@ -56,7 +56,7 @@
         </activity>
 
         <receiver
-            android:name=".MyReceiver"
+            android:name=".Core.MyReceiver"
             android:enabled="true"
             android:exported="true">
 

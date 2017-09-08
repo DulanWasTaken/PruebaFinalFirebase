@@ -9,8 +9,8 @@ android {
         minSdkVersion 17
 
         targetSdkVersion 25
-        versionCode 9
-        versionName "1.5"
+        versionCode 11
+        versionName "1.7"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
     }
@@ -47,6 +47,7 @@ dependencies {
     compile 'com.android.support:support-v4:25.3.1'
     compile 'com.google.firebase:firebase-core:11.0.4'
     compile 'com.google.firebase:firebase-perf:11.0.4'
+    compile 'com.google.firebase:firebase-storage:11.0.4'
     testCompile 'junit:junit:4.12'
 }
 

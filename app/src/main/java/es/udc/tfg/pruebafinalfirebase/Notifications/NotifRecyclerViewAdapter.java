@@ -10,10 +10,10 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
-import es.udc.tfg.pruebafinalfirebase.DBManager;
+import es.udc.tfg.pruebafinalfirebase.Core.DBManager;
 import es.udc.tfg.pruebafinalfirebase.Group.Group;
 import es.udc.tfg.pruebafinalfirebase.R;
-import es.udc.tfg.pruebafinalfirebase.Utils;
+import es.udc.tfg.pruebafinalfirebase.Utils.Utils;
 
 
 /**

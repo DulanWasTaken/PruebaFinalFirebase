@@ -2,22 +2,27 @@ package es.udc.tfg.pruebafinalfirebase.Messages;
 
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+
 import java.util.ArrayList;
 
-import es.udc.tfg.pruebafinalfirebase.DBManager;
-import es.udc.tfg.pruebafinalfirebase.Group.GroupsRecyclerViewAdapter;
+import es.udc.tfg.pruebafinalfirebase.Core.DBManager;
 import es.udc.tfg.pruebafinalfirebase.R;
-import es.udc.tfg.pruebafinalfirebase.Utils;
+import es.udc.tfg.pruebafinalfirebase.Utils.Utils;
 
 /**
  * Created by Usuario on 18/02/2017.
@@ -131,6 +136,23 @@ public class msgRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 vhLeft.date_right.setText(stringDate);
                 vhLeft.date_down.setText(stringDate);
 
+                if(msg.getType()== Message.TYPE_IMG){
+                    vhLeft.img.setVisibility(View.VISIBLE);
+                    vhLeft.img.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            StorageReference ref = FirebaseStorage.getInstance().getReference().child(DBManager.STORAGE_MESSAGES).child(msg.getMsgId());
+                            ref.getBytes(1024 * 1024).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+                                @Override
+                                public void onSuccess(byte[] bytes) {
+                                    Bitmap bitmap = BitmapFactory.decodeByteArray(bytes,0,bytes.length);
+                                    vhLeft.img.setImageBitmap(bitmap);
+                                }
+                            });
+                        }
+                    });
+                }
+
                 if(m.length()>20){
                     vhLeft.date_right.setVisibility(View.GONE);
                     vhLeft.date_down.setVisibility(View.VISIBLE);
@@ -192,6 +214,7 @@ public class msgRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     public static class ViewHolderLeft extends RecyclerView.ViewHolder {
         // each data item is just a string in this case
         public TextView name,msg,date_right,date_down;
+        public ImageView img;
         public RelativeLayout content;
 
         public ViewHolderLeft(View v) {
@@ -201,6 +224,7 @@ public class msgRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             date_right = (TextView)v.findViewById(R.id.msg_date_tv_right);
             date_down = (TextView)v.findViewById(R.id.msg_date_tv_down);
             content = (RelativeLayout) v.findViewById(R.id.msg_content);
+            img = (ImageView) v.findViewById(R.id.msg_img);
         }
     }
 

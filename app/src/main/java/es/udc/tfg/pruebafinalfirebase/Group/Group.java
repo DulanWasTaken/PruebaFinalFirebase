@@ -22,17 +22,18 @@ public class Group {
     private ArrayList<String> admins;
     private long time;
     private String id;
+    private boolean allowInvitations;
 
     public Group() {
     }
 
-    public Group(String name,String id, ArrayList<GroupMember> membersId,ArrayList<String> admins,ArrayList<GroupMember> invitations) {
+    public Group(String name,String id, ArrayList<GroupMember> membersId,ArrayList<String> admins,ArrayList<GroupMember> invitations, boolean allowInvitations) {
         this.name = name;
         this.id = id;
         this.membersId = membersId;
         this.admins = admins;
         this.invitations = invitations;
-
+        this.allowInvitations = allowInvitations;
         this.time = System.currentTimeMillis();
     }
 
@@ -144,5 +145,13 @@ public class Group {
 
     public void setDestinationPoints(Map<String, DestinationPoint> destinationPoints) {
         this.destinationPoints = destinationPoints;
+    }
+
+    public boolean isAllowInvitations() {
+        return allowInvitations;
+    }
+
+    public void setAllowInvitations(boolean allowInvitations) {
+        this.allowInvitations = allowInvitations;
     }
 }
